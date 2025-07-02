@@ -158,3 +158,9 @@
 	syncBtn.addEventListener('click', startSync);
 })();
 </script>
+
+<script type="text/javascript">
+$(function() {
+    $('#contributorUserSyncSettingsForm').pkpHandler('$.pkp.controllers.form.AjaxFormHandler');
+});
+</script>
