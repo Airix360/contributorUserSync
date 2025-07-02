@@ -41,6 +41,7 @@ class ContributorUserSyncSettingsForm extends Form
     {
         $this->readUserVars([
             'enabled',
+            'availableContributorRoles',
             'customContributorRoles',
             'notifySynced',
             'defaultRole',
@@ -56,6 +57,7 @@ class ContributorUserSyncSettingsForm extends Form
         $contextId = $this->plugin->getCurrentContextId();
 
         $this->plugin->updateSetting($contextId, 'enabled', (bool) $this->getData('enabled'), 'bool');
+        $this->plugin->updateSetting($contextId, 'availableContributorRoles', $this->getData('availableContributorRoles') ?? [], 'object');
         $this->plugin->updateSetting($contextId, 'customContributorRoles', $this->getData('customContributorRoles') ?? [], 'object');
         $this->plugin->updateSetting($contextId, 'notifySynced', (bool) $this->getData('notifySynced'), 'bool');
         $this->plugin->updateSetting($contextId, 'defaultRole', $this->getData('defaultRole'), 'string');
@@ -84,6 +86,9 @@ class ContributorUserSyncSettingsForm extends Form
         );
         $templateMgr->assign('pluginUrl', $pluginUrl);
         $templateMgr->assign('syncSummary', $this->syncSummary);
+        $templateMgr->assign('enabled', $this->getData('enabled'));
+        $templateMgr->assign('availableContributorRoles', $this->getData('availableContributorRoles'));
+        $templateMgr->assign('allContributorRoles', self::getAllContributorRoles());
         return parent::fetch($request, $template, $display);
     }
 

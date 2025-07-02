@@ -42,3 +42,67 @@ msgstr "New Users Created"
 
 msgid "plugins.generic.contributorUserSync.settings.syncNow.result.skipped"
 msgstr "Users Skipped (existing or missing email)"
+
+msgid "plugins.generic.contributorUserSync.settings.availableContributorRoles"
+msgstr "Available Contributor Roles for Submission"
+
+# Contributor Roles
+msgid "plugins.generic.contributorUserSync.role.Author"
+msgstr "Author"
+
+msgid "plugins.generic.contributorUserSync.role.Co-author"
+msgstr "Co-author"
+
+msgid "plugins.generic.contributorUserSync.role.Lead Author"
+msgstr "Lead Author"
+
+msgid "plugins.generic.contributorUserSync.role.Corresponding Author"
+msgstr "Corresponding Author"
+
+msgid "plugins.generic.contributorUserSync.role.Data Collector"
+msgstr "Data Collector"
+
+msgid "plugins.generic.contributorUserSync.role.Data Analyst"
+msgstr "Data Analyst"
+
+msgid "plugins.generic.contributorUserSync.role.Resource Provider"
+msgstr "Resource Provider"
+
+msgid "plugins.generic.contributorUserSync.role.Materials Provider"
+msgstr "Materials Provider"
+
+msgid "plugins.generic.contributorUserSync.role.Editor"
+msgstr "Editor"
+
+msgid "plugins.generic.contributorUserSync.role.Translator"
+msgstr "Translator"
+
+msgid "plugins.generic.contributorUserSync.role.Proofreader"
+msgstr "Proofreader"
+
+msgid "plugins.generic.contributorUserSync.role.Reviewer"
+msgstr "Reviewer"
+
+msgid "plugins.generic.contributorUserSync.role.Layout Designer"
+msgstr "Layout Designer"
+
+msgid "plugins.generic.contributorUserSync.role.Copyeditor"
+msgstr "Copyeditor"
+
+msgid "plugins.generic.contributorUserSync.role.Ethics Advisor"
+msgstr "Ethics Advisor"
+
+msgid "plugins.generic.contributorUserSync.role.Legal Advisor"
+msgstr "Legal Advisor"
+
+msgid "plugins.generic.contributorUserSync.role.Community Partner"
+msgstr "Community Partner"
+
+msgid "plugins.generic.contributorUserSync.role.Field Expert"
+msgstr "Field Expert"
+
+msgid "plugins.generic.contributorUserSync.role.Liaison Officer"
+msgstr "Liaison Officer"
+
+msgid "plugins.generic.contributorUserSync.role.Funding Coordinator"
+msgstr "Funding Coordinator"
