@@ -248,14 +248,19 @@ class ContributorUserSyncPlugin extends GenericPlugin
     {
         [$form] = $args;
         $contextId = $form->getContextId();
-        $customRoles = $this->getSetting($contextId, 'availableContributorRoles');
-        if (!empty($customRoles)) {
+        $customRoles = $this->getSetting($contextId, 'availableContributorRoles') ?? [];
+        if (!is_array($customRoles)) {
+            $customRoles = [];
+        }
+
+        if ($customRoles) {
             $roleOptions = [];
             foreach ($customRoles as $role) {
                 $roleOptions[$role] = __("plugins.generic.contributorUserSync.role.$role");
             }
             $form->setData('contributorRoleOptions', $roleOptions);
         }
+
         return false;
     }
 }

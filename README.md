@@ -16,6 +16,8 @@ This plugin automatically syncs contributors to user accounts and allows you to 
 2. Enable the plugin from the OJS site administration dashboard.
 3. Configure the available contributor roles in the plugin settings.
 
+When no roles are selected, OJS will fall back to the default set of contributor roles.
+
 ## Usage
 - When enabled, the plugin will automatically create user accounts for new contributors during submission.
 - The "Contributor Role" dropdown in the submission metadata form will only show the roles you select in the plugin settings.
