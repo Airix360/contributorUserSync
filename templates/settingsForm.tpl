@@ -65,19 +65,25 @@
 				{translate key="plugins.generic.contributorUserSync.settings.syncNow.button"}
 			</button>
 
-			<div id="syncProgressContainer" style="display:none; margin-top:1em;">
-				<div style="width:100%;background:#eee;border-radius:4px;overflow:hidden;height:24px;">
-					<div id="syncProgressBar" style="width:0%;height:24px;background:#4caf50;text-align:center;color:#fff;line-height:24px;transition:width 0.3s;"></div>
-				</div>
-				<div id="syncStats" style="margin-top:0.5em;font-size:1em;">
-					🔍 Contributors found: <span id="contributorsFound">0</span><br>
-					✅ New users synced: <span id="usersSynced">0</span><br>
-					⚠️ Skipped: <span id="usersSkipped">0</span><br>
-				</div>
-				<div id="syncSummary" style="margin-top:1em;font-weight:bold;"></div>
-			</div>
-		</div>
-	</fieldset>
+                        <div id="syncProgressContainer" style="display:none; margin-top:1em;">
+                                <div style="width:100%;background:#eee;border-radius:4px;overflow:hidden;height:24px;">
+                                        <div id="syncProgressBar" style="width:0%;height:24px;background:#4caf50;text-align:center;color:#fff;line-height:24px;transition:width 0.3s;"></div>
+                                </div>
+                                <div id="syncStats" style="margin-top:0.5em;font-size:1em;">
+                                        🔍 Contributors found: <span id="contributorsFound">0</span><br>
+                                        ✅ New users synced: <span id="usersSynced">0</span><br>
+                                        ⚠️ Skipped: <span id="usersSkipped">0</span><br>
+                                </div>
+                                <div id="syncSummary" style="margin-top:1em;font-weight:bold;"></div>
+                                {if $syncSummary}
+                                        <div class="pkp_form_info" style="margin-top:1em;">
+                                                {translate key="plugins.generic.contributorUserSync.settings.syncNow.result.created"}: {$syncSummary.created}<br>
+                                                {translate key="plugins.generic.contributorUserSync.settings.syncNow.result.skipped"}: {$syncSummary.skipped}
+                                        </div>
+                                {/if}
+                        </div>
+                </div>
+        </fieldset>
 
 	<button class="pkp_button pkp_button_primary" type="submit">
 		{translate key="common.save"}
