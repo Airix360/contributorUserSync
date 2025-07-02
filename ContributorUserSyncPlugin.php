@@ -10,7 +10,6 @@ use PKP\security\Validation;
 use PKP\facades\Repo;
 use DAORegistry;
 use PKP\mail\MailTemplate;
-use APP\submission\Collector as SubmissionCollector;
 
 class ContributorUserSyncPlugin extends GenericPlugin
 {
@@ -89,7 +88,7 @@ class ContributorUserSyncPlugin extends GenericPlugin
                 $synced = (int) $request->getUserVar('synced');
                 $skipped = (int) $request->getUserVar('skipped');
 
-                $allSubmissions = (new SubmissionCollector())
+                $allSubmissions = Repo::submission()->getCollector()
                     ->filterByContextIds([$contextId])
                     ->getMany();
                 $total = count($allSubmissions);
