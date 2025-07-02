@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plugin SYSTEM "../../lib/pkp/dtd/pluginVersion.dtd">
+<plugin>
+    <name>contributorUserSync</name>
+    <category>generic</category>
+    <version>1.0.0.0</version>
+    <date>2025-07-02</date>
+    <description>Syncs submission contributors to user database and extends contributor roles.</description>
+    <license>GPL v3</license>
+</plugin>

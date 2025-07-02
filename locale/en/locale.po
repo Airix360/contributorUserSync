@@ -1,0 +1,44 @@
+msgid "plugins.generic.contributorUserSync.displayName"
+msgstr "Contributor User Sync"
+
+msgid "plugins.generic.contributorUserSync.description"
+msgstr "Automatically create user accounts for contributors listed during submission."
+
+msgid "plugins.generic.contributorUserSync.settings.title"
+msgstr "Contributor User Sync Settings"
+
+msgid "plugins.generic.contributorUserSync.settings.enablePlugin"
+msgstr "Enable automatic user sync for new submissions"
+
+msgid "plugins.generic.contributorUserSync.settings.customContributorRoles"
+msgstr "Restrict Sync to Specific Roles"
+
+msgid "plugins.generic.contributorUserSync.settings.customContributorRoles.description"
+msgstr "Only sync contributors with these roles. Leave blank to allow all roles."
+
+msgid "plugins.generic.contributorUserSync.settings.notifySynced"
+msgstr "Notify contributors via email when synced"
+
+msgid "plugins.generic.contributorUserSync.settings.defaultRole"
+msgstr "Default role assigned to synced users"
+
+msgid "plugins.generic.contributorUserSync.settings.defaultPasswordLength"
+msgstr "Password length for auto-created accounts"
+
+msgid "plugins.generic.contributorUserSync.settings.overwriteExisting"
+msgstr "Overwrite existing user name/public name if user already exists"
+
+msgid "plugins.generic.contributorUserSync.settings.syncNow.title"
+msgstr "Manual Sync: Past Submissions"
+
+msgid "plugins.generic.contributorUserSync.settings.syncNow.description"
+msgstr "Click the button below to sync contributors from previously submitted articles."
+
+msgid "plugins.generic.contributorUserSync.settings.syncNow.button"
+msgstr "Sync Contributors of Past Submissions"
+
+msgid "plugins.generic.contributorUserSync.settings.syncNow.result.created"
+msgstr "New Users Created"
+
+msgid "plugins.generic.contributorUserSync.settings.syncNow.result.skipped"
+msgstr "Users Skipped (existing or missing email)"
