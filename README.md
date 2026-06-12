@@ -103,8 +103,9 @@ sync*, run a **Bulk sync preview** to see what would change, then apply.
 ## How the link is stored
 
 Because core OJS authors have no `userId` field, the contributor→user link is stored as
-a plugin-owned author setting (`contributorUserSync::userId`) in the `author_settings`
-table, alongside a last-status stamp used for editor feedback. Synced ORCID values are
+a plugin-owned author setting (`contributorUserSyncUserId`, registered on the author
+schema via the `Schema::get::author` hook) in the `author_settings` table, alongside a
+last-status stamp used for editor feedback. Synced ORCID values are
 written to the contributor's standard ORCID fields so they display and export normally.
 
 ## Limitations

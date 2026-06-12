@@ -193,6 +193,19 @@ msgstr "Skipped because the contributor role is not eligible"
 msgid "plugins.generic.contributorUserSync.outcome.error"
 msgstr "Error"
 
+# --- Contributors-panel actions
+msgid "plugins.generic.contributorUserSync.action.sync"
+msgstr "Sync"
+
+msgid "plugins.generic.contributorUserSync.action.invite"
+msgstr "Invite"
+
+msgid "plugins.generic.contributorUserSync.action.syncAll"
+msgstr "Sync Contributors"
+
+msgid "plugins.generic.contributorUserSync.action.error"
+msgstr "The sync request failed. Check that you have journal-manager access."
+
 # --- New-user account state
 msgid "plugins.generic.contributorUserSync.user.awaitingSetup"
 msgstr "Account created by Contributor User Sync; awaiting activation by the contributor."

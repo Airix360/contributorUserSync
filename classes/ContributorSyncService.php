@@ -28,12 +28,14 @@ use PKP\user\User;
 
 class ContributorSyncService
 {
-    /** Author-setting key holding the matched user id (the plugin's "link"). */
-    public const SETTING_USER_ID = 'contributorUserSync::userId';
-    /** Author-setting key holding the last sync status code (editor feedback). */
-    public const SETTING_STATUS = 'contributorUserSync::status';
-    /** Author-setting key holding the last sync timestamp. */
-    public const SETTING_STATUS_AT = 'contributorUserSync::statusAt';
+    /**
+     * Author-setting keys. These MUST be registered on the author schema via
+     * the Schema::get::author hook (see the plugin class) or EntityDAO::update
+     * silently strips them on save.
+     */
+    public const SETTING_USER_ID = 'contributorUserSyncUserId';
+    public const SETTING_STATUS = 'contributorUserSyncStatus';
+    public const SETTING_STATUS_AT = 'contributorUserSyncStatusAt';
 
     /**
      * @param array $settings Resolved plugin settings (see ContributorUserSyncPlugin::resolveSettings()).

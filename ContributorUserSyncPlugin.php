@@ -48,15 +48,46 @@ class ContributorUserSyncPlugin extends GenericPlugin
             return false;
         }
         if ($this->getEnabled($mainContextId)) {
+            // Register the plugin's author properties; without this the
+            // EntityDAO strips them on save and the user link is never stored.
+            Hook::add('Schema::get::author', [$this, 'onAuthorSchema']);
             // Edits: mutate the about-to-be-saved author in place.
             Hook::add('Author::edit', [$this, 'onAuthorEdit']);
             // Adds: mutate before insert so changes persist with the new row.
             Hook::add('Author::add::before', [$this, 'onAuthorAddBefore']);
+            // Per-contributor Sync/Invite buttons in the workflow contributors panel.
+            Hook::add('TemplateManager::display', [$this, 'onTemplateDisplay']);
         }
         return true;
     }
 
     // ------------------------------------------------------------------ Hooks
+
+    /**
+     * Add the plugin's properties to the author schema so they survive saves.
+     *
+     * @param array $args [stdClass $schema]
+     */
+    public function onAuthorSchema(string $hookName, array $args): int
+    {
+        $schema = $args[0];
+        $schema->properties->{ContributorSyncService::SETTING_USER_ID} = (object) [
+            'type' => 'integer',
+            'apiSummary' => false,
+            'validation' => ['nullable'],
+        ];
+        $schema->properties->{ContributorSyncService::SETTING_STATUS} = (object) [
+            'type' => 'string',
+            'apiSummary' => false,
+            'validation' => ['nullable'],
+        ];
+        $schema->properties->{ContributorSyncService::SETTING_STATUS_AT} = (object) [
+            'type' => 'string',
+            'apiSummary' => false,
+            'validation' => ['nullable'],
+        ];
+        return Hook::CONTINUE;
+    }
 
     /**
      * @param array $args [$newAuthor, $author, $params]
@@ -143,6 +174,55 @@ class ContributorUserSyncPlugin extends GenericPlugin
         );
     }
 
+    /**
+     * Inject the contributors-panel script (with its config) on backend pages
+     * that can show the contributors list (workflow dashboard, submission wizard).
+     */
+    public function onTemplateDisplay(string $hookName, array $args): int
+    {
+        /** @var TemplateManager $templateMgr */
+        $templateMgr = $args[0];
+        $request = Application::get()->getRequest();
+        if (!($request->getRouter() instanceof \PKP\core\PKPPageRouter)) {
+            return Hook::CONTINUE;
+        }
+        $context = $request->getContext();
+        if (!$context || !in_array($request->getRequestedPage(), ['dashboard', 'workflow', 'submission'], true)) {
+            return Hook::CONTINUE;
+        }
+        $dispatcher = $request->getDispatcher();
+        $config = [
+            'endpoint' => $dispatcher->url(
+                $request,
+                \PKP\core\PKPApplication::ROUTE_COMPONENT,
+                null,
+                'grid.settings.plugins.SettingsPluginGridHandler',
+                'manage',
+                null,
+                ['plugin' => $this->getName(), 'category' => 'generic']
+            ),
+            'apiBase' => $dispatcher->url($request, \PKP\core\PKPApplication::ROUTE_API, $context->getPath(), 'submissions'),
+            'csrfToken' => $request->getSession()->token(),
+            'i18n' => [
+                'sync' => __('plugins.generic.contributorUserSync.action.sync'),
+                'invite' => __('plugins.generic.contributorUserSync.action.invite'),
+                'syncAll' => __('plugins.generic.contributorUserSync.action.syncAll'),
+                'error' => __('plugins.generic.contributorUserSync.action.error'),
+            ],
+        ];
+        $templateMgr->addJavaScript(
+            'contributorUserSyncConfig',
+            'window.ContributorUserSyncConfig = ' . json_encode($config) . ';',
+            ['inline' => true, 'contexts' => 'backend']
+        );
+        $templateMgr->addJavaScript(
+            'contributorUserSync',
+            $request->getBaseUrl() . '/' . $this->getPluginPath() . '/js/contributorSync.js',
+            ['contexts' => 'backend']
+        );
+        return Hook::CONTINUE;
+    }
+
     // --------------------------------------------------------------- Settings
 
     /**
@@ -205,6 +285,12 @@ class ContributorUserSyncPlugin extends GenericPlugin
                     return new JSONMessage(false, __('form.csrfInvalid'));
                 }
                 return $this->manageBulk($request, $verb === 'bulkRun');
+            case 'syncOne':
+            case 'syncAll':
+                if (!$request->checkCSRF()) {
+                    return new JSONMessage(false, __('form.csrfInvalid'));
+                }
+                return $this->manageSyncAction($request, $verb);
             case 'bulkExport':
                 $this->downloadLastReport($request);
                 // downloadLastReport emits the file and exits; this is unreachable.
@@ -255,6 +341,70 @@ class ContributorUserSyncPlugin extends GenericPlugin
             'rows' => $report->rows,
         ]);
         return new JSONMessage(true, $templateMgr->fetch($this->getTemplateResource('bulkReport.tpl')));
+    }
+
+    /**
+     * Manual sync triggered from the contributors panel: one contributor
+     * (optionally forcing invite/create for that person) or all contributors of
+     * a submission's current publication. Explicit manager actions run even
+     * when automatic sync is switched off.
+     */
+    private function manageSyncAction($request, string $verb): JSONMessage
+    {
+        $context = $request->getContext();
+        $settings = $this->resolveSettings($context->getId());
+        $settings['syncEnabled'] = true;
+        $force = (string) $request->getUserVar('force');
+        if ($verb === 'syncOne' && in_array($force, ['invite', 'create'], true)) {
+            $settings['syncMode'] = $force;
+        } elseif (($settings['syncMode'] ?? 'nothing') === 'nothing') {
+            $settings['syncMode'] = 'link';
+        }
+
+        // Resolve the target author(s), verifying they belong to this context.
+        $authors = [];
+        $submissionId = 0;
+        if ($verb === 'syncOne') {
+            $author = Repo::author()->get((int) $request->getUserVar('authorId'));
+            $publication = $author ? Repo::publication()->get((int) $author->getData('publicationId')) : null;
+            $submission = $publication ? Repo::submission()->get((int) $publication->getData('submissionId'), $context->getId()) : null;
+            if (!$submission) {
+                return new JSONMessage(false, __('plugins.generic.contributorUserSync.action.error'));
+            }
+            $submissionId = (int) $submission->getId();
+            $authors = [$author];
+        } else {
+            $submission = Repo::submission()->get((int) $request->getUserVar('submissionId'), $context->getId());
+            if (!$submission) {
+                return new JSONMessage(false, __('plugins.generic.contributorUserSync.action.error'));
+            }
+            $submissionId = (int) $submission->getId();
+            $authors = Repo::author()->getCollector()
+                ->filterByPublicationIds([(int) $submission->getData('currentPublicationId')])
+                ->getMany();
+        }
+
+        $service = new ContributorSyncService($settings, $context);
+        $report = new SyncReport();
+        $lines = [];
+        foreach ($authors as $author) {
+            $changed = $service->processAuthor($author, $submissionId, $report, true);
+            if ($changed) {
+                self::$suspendHook = true;
+                try {
+                    Repo::author()->edit($author, []);
+                } finally {
+                    self::$suspendHook = false;
+                }
+            }
+            $row = end($report->rows);
+            $messages = array_map(
+                fn (string $outcome) => __('plugins.generic.contributorUserSync.outcome.' . $outcome),
+                $row['outcomes']
+            );
+            $lines[] = ($row['name'] ?: $row['email']) . ': ' . implode('; ', $messages);
+        }
+        return new JSONMessage(true, implode("\n", $lines));
     }
 
     /**
