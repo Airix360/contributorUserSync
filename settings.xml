@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plugin_settings SYSTEM "../../../lib/pkp/dtd/pluginSettings.dtd">
+
+<!--
+  * settings.xml
+  *
+  * Copyright (c) 2026 Hendrix Nwaokolo / Airix Media
+  * Distributed under the GNU GPL v3. For full terms see the file docs/COPYING.
+  *
+  * Default plugin settings. Defaults are deliberately safe: link existing
+  * users only, sync verified ORCID, never auto-create users or overwrite
+  * an existing contributor ORCID.
+  -->
+<plugin_settings>
+	<!-- General -->
+	<setting type="bool">
+		<name>syncEnabled</name>
+		<value>false</value>
+	</setting>
+
+	<!-- Sync behaviour: nothing | link | invite | create -->
+	<setting type="string">
+		<name>syncMode</name>
+		<value>link</value>
+	</setting>
+
+	<!-- ORCID auto-sync -->
+	<setting type="bool">
+		<name>orcidAutoSync</name>
+		<value>true</value>
+	</setting>
+	<setting type="bool">
+		<name>orcidOverwrite</name>
+		<value>false</value>
+	</setting>
+	<setting type="bool">
+		<name>orcidAllowManual</name>
+		<value>false</value>
+	</setting>
+	<!-- nothing | warn | request -->
+	<setting type="string">
+		<name>orcidNoVerifiedAction</name>
+		<value>nothing</value>
+	</setting>
+
+	<!-- Existing users -->
+	<setting type="bool">
+		<name>updateContributorFromUser</name>
+		<value>false</value>
+	</setting>
+	<setting type="bool">
+		<name>updateUserFromContributor</name>
+		<value>false</value>
+	</setting>
+
+	<!-- New users -->
+	<setting type="string">
+		<name>createUserRole</name>
+		<value>author</value>
+	</setting>
+</plugin_settings>

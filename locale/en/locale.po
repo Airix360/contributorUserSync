@@ -1,0 +1,195 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: Contributor User Sync\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-06-12\n"
+"PO-Revision-Date: 2026-06-12\n"
+"Language-Team: \n"
+"Language: en\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "plugins.generic.contributorUserSync.displayName"
+msgstr "Contributor User Sync"
+
+msgid "plugins.generic.contributorUserSync.description"
+msgstr "Links submission contributors to OJS user accounts and reuses verified ORCID iDs from existing user profiles, reducing repeated ORCID prompts and improving author metadata quality."
+
+# --- Settings: General
+msgid "plugins.generic.contributorUserSync.settings.general"
+msgstr "General"
+
+msgid "plugins.generic.contributorUserSync.settings.syncEnabled"
+msgstr "Enable Contributor User Sync"
+
+# --- Settings: Sync behaviour
+msgid "plugins.generic.contributorUserSync.settings.behaviour"
+msgstr "Sync behaviour"
+
+msgid "plugins.generic.contributorUserSync.settings.behaviour.desc"
+msgstr "Choose what happens when a contributor is added or updated on a submission."
+
+msgid "plugins.generic.contributorUserSync.settings.mode.nothing"
+msgstr "Do nothing automatically"
+
+msgid "plugins.generic.contributorUserSync.settings.mode.link"
+msgstr "Link existing OJS users only (recommended)"
+
+msgid "plugins.generic.contributorUserSync.settings.mode.invite"
+msgstr "Invite missing contributors to create an account"
+
+msgid "plugins.generic.contributorUserSync.settings.mode.create"
+msgstr "Automatically create missing user accounts"
+
+# --- Settings: ORCID auto-sync
+msgid "plugins.generic.contributorUserSync.settings.orcid"
+msgstr "ORCID auto-sync"
+
+msgid "plugins.generic.contributorUserSync.settings.orcidAutoSync"
+msgstr "Copy a verified ORCID iD from the matched user profile to the contributor"
+
+msgid "plugins.generic.contributorUserSync.settings.orcidOverwrite"
+msgstr "Overwrite an ORCID iD the contributor already has (off by default)"
+
+msgid "plugins.generic.contributorUserSync.settings.orcidAllowManual"
+msgstr "Also sync ORCID iDs that the user typed manually but never verified (off by default)"
+
+msgid "plugins.generic.contributorUserSync.settings.orcidNoVerified.desc"
+msgstr "When the matched user has no verified ORCID iD:"
+
+msgid "plugins.generic.contributorUserSync.settings.orcidNoVerified.nothing"
+msgstr "Do nothing"
+
+msgid "plugins.generic.contributorUserSync.settings.orcidNoVerified.warn"
+msgstr "Warn the editor in the sync report"
+
+msgid "plugins.generic.contributorUserSync.settings.orcidNoVerified.request"
+msgstr "Flag the contributor for an ORCID connection request"
+
+# --- Settings: Contributor roles
+msgid "plugins.generic.contributorUserSync.settings.roles"
+msgstr "Contributor roles"
+
+msgid "plugins.generic.contributorUserSync.settings.roles.desc"
+msgstr "Select which contributor roles are eligible for syncing. Leave all unchecked to apply to every role."
+
+# --- Settings: Existing users
+msgid "plugins.generic.contributorUserSync.settings.existing"
+msgstr "Existing users"
+
+msgid "plugins.generic.contributorUserSync.settings.updateContributorFromUser"
+msgstr "Fill empty contributor names from the matched user profile"
+
+msgid "plugins.generic.contributorUserSync.settings.updateUserFromContributor"
+msgstr "Update the user profile name from contributor metadata (off by default)"
+
+# --- Settings: New users
+msgid "plugins.generic.contributorUserSync.settings.new"
+msgstr "New users"
+
+msgid "plugins.generic.contributorUserSync.settings.new.desc"
+msgstr "Newly created or invited accounts are always given the Author role only. Editor and Reviewer roles are never assigned automatically."
+
+msgid "plugins.generic.contributorUserSync.settings.createUserRole"
+msgstr "Default role for created users"
+
+# --- Settings: Bulk sync
+msgid "plugins.generic.contributorUserSync.settings.bulk"
+msgstr "Bulk sync"
+
+msgid "plugins.generic.contributorUserSync.settings.bulk.desc"
+msgstr "Scan previous submissions in this journal and apply the sync rules above. Preview is a dry run that changes nothing."
+
+msgid "plugins.generic.contributorUserSync.bulk.preview"
+msgstr "Preview sync"
+
+msgid "plugins.generic.contributorUserSync.bulk.run"
+msgstr "Run sync"
+
+msgid "plugins.generic.contributorUserSync.bulk.running"
+msgstr "Working…"
+
+msgid "plugins.generic.contributorUserSync.bulk.confirmRun"
+msgstr "This will update contributor metadata across previous submissions in this journal. Continue?"
+
+msgid "plugins.generic.contributorUserSync.bulk.export"
+msgstr "Download report (CSV)"
+
+msgid "plugins.generic.contributorUserSync.bulk.previewHeading"
+msgstr "Preview results (no changes saved)"
+
+msgid "plugins.generic.contributorUserSync.bulk.appliedHeading"
+msgstr "Sync complete"
+
+# --- Report counts
+msgid "plugins.generic.contributorUserSync.report.scanned"
+msgstr "Contributors scanned"
+
+msgid "plugins.generic.contributorUserSync.report.matched"
+msgstr "Existing users matched"
+
+msgid "plugins.generic.contributorUserSync.report.created"
+msgstr "New users created"
+
+msgid "plugins.generic.contributorUserSync.report.invited"
+msgstr "Invitations sent"
+
+msgid "plugins.generic.contributorUserSync.report.orcidSynced"
+msgstr "ORCID iDs synced"
+
+msgid "plugins.generic.contributorUserSync.report.skippedNoEmail"
+msgstr "Skipped — no email"
+
+msgid "plugins.generic.contributorUserSync.report.skippedNoUser"
+msgstr "Skipped — no matching user"
+
+msgid "plugins.generic.contributorUserSync.report.skippedNoVerifiedOrcid"
+msgstr "Skipped — no verified ORCID"
+
+msgid "plugins.generic.contributorUserSync.report.errors"
+msgstr "Errors"
+
+msgid "plugins.generic.contributorUserSync.report.outcome"
+msgstr "Outcome"
+
+# --- Outcome labels (editor-facing feedback)
+msgid "plugins.generic.contributorUserSync.outcome.matchedUser"
+msgstr "Matched existing user"
+
+msgid "plugins.generic.contributorUserSync.outcome.linked"
+msgstr "Linked contributor to user"
+
+msgid "plugins.generic.contributorUserSync.outcome.orcidSynced"
+msgstr "ORCID synced from verified user profile"
+
+msgid "plugins.generic.contributorUserSync.outcome.orcidSkippedExisting"
+msgstr "Contributor already had an ORCID; skipped overwrite"
+
+msgid "plugins.generic.contributorUserSync.outcome.orcidSkippedUnverified"
+msgstr "User ORCID was not verified; skipped"
+
+msgid "plugins.generic.contributorUserSync.outcome.userCreated"
+msgstr "New user account created"
+
+msgid "plugins.generic.contributorUserSync.outcome.invitationSent"
+msgstr "Invitation sent"
+
+msgid "plugins.generic.contributorUserSync.outcome.skippedNoEmail"
+msgstr "Skipped because the contributor has no email"
+
+msgid "plugins.generic.contributorUserSync.outcome.skippedNoUser"
+msgstr "No matching OJS user found"
+
+msgid "plugins.generic.contributorUserSync.outcome.skippedNoVerifiedOrcid"
+msgstr "Matching user found but no verified ORCID connected"
+
+msgid "plugins.generic.contributorUserSync.outcome.skippedIneligibleRole"
+msgstr "Skipped because the contributor role is not eligible"
+
+msgid "plugins.generic.contributorUserSync.outcome.error"
+msgstr "Error"
+
+# --- New-user account state
+msgid "plugins.generic.contributorUserSync.user.awaitingSetup"
+msgstr "Account created by Contributor User Sync; awaiting activation by the contributor."
