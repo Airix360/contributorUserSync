@@ -81,13 +81,50 @@
 		el.textContent = text;
 	}
 
-	function makeButton(label, extraClass) {
+	function makeButton(label, extraClass, referenceButton) {
 		var b = document.createElement('button');
 		b.type = 'button';
-		b.className = 'pkpButton cusSyncBtn ' + (extraClass || '');
+		// Copy the class list from a sibling core button so the styling always
+		// matches the current OJS theme (the classes are Tailwind utilities).
+		b.className = (referenceButton ? referenceButton.className : 'pkpButton') + ' cusSyncBtn ' + (extraClass || '');
 		b.style.marginLeft = '0.25rem';
 		b.textContent = label;
 		return b;
+	}
+
+	function renderBadges(panel, statuses) {
+		Array.prototype.forEach.call(panel.querySelectorAll('.listPanel__item'), function (item) {
+			var authorId = item.getAttribute('data-cus-author-id');
+			var info = authorId && statuses ? statuses[authorId] : null;
+			var badge = item.querySelector('.cusStatusBadge');
+			if (!info) {
+				if (badge) {
+					badge.remove();
+				}
+				return;
+			}
+			if (!badge) {
+				badge = document.createElement('span');
+				badge.className = 'cusStatusBadge';
+				badge.style.cssText = 'display:inline-block;margin-left:0.5rem;padding:0.125rem 0.5rem;' +
+					'border:1px solid #bbb;border-radius:1rem;font-size:0.75rem;color:#555;vertical-align:middle;';
+				var anchor = item.querySelector('.listPanel__itemTitle') || item.firstElementChild;
+				(anchor.parentElement || item).insertBefore(badge, anchor.nextSibling);
+			}
+			// Only touch the DOM on real changes, so the MutationObserver settles.
+			if (badge.textContent !== info.label) {
+				badge.textContent = info.label;
+			}
+			if (badge.title !== (info.at || '')) {
+				badge.title = info.at || '';
+			}
+		});
+	}
+
+	function loadStatuses(panel, subId) {
+		post({verb: 'statuses', submissionId: subId}).then(function (res) {
+			renderBadges(panel, res.content || {});
+		}).catch(function () { /* badges are best-effort */ });
 	}
 
 	function decorate() {
@@ -114,12 +151,13 @@
 		getContributors(subId).then(function (data) {
 			// Panel-level "Sync Contributors".
 			if (!panel.querySelector('.cusSyncAllBtn')) {
-				var allBtn = makeButton(cfg.i18n.syncAll, 'cusSyncAllBtn');
+				var allBtn = makeButton(cfg.i18n.syncAll, 'cusSyncAllBtn', addBtn);
 				addBtn.parentElement.insertBefore(allBtn, addBtn);
 				allBtn.addEventListener('click', function () {
 					allBtn.disabled = true;
 					post({verb: 'syncAll', submissionId: subId}).then(function (res) {
 						showMessage(panel, res.content || cfg.i18n.error, res.status);
+						loadStatuses(panel, subId);
 					}).catch(function () {
 						showMessage(panel, cfg.i18n.error, false);
 					}).finally(function () {
@@ -129,11 +167,13 @@
 				});
 			}
 			// Per-row "Sync" / "Invite".
+			var decoratedNew = false;
 			Array.prototype.forEach.call(items, function (item, idx) {
 				var actions = item.querySelector('.listPanel__itemActions');
 				if (!actions || actions.querySelector('.cusSyncBtn')) {
 					return;
 				}
+				decoratedNew = true;
 				var titleEl = item.querySelector('.listPanel__itemTitle') || item;
 				var title = titleEl.textContent.replace(/\s+/g, ' ').trim();
 				var contributor = data.list.find(function (c) {
@@ -142,8 +182,10 @@
 				if (!contributor) {
 					return;
 				}
-				var syncBtn = makeButton(cfg.i18n.sync);
-				var inviteBtn = makeButton(cfg.i18n.invite);
+				item.setAttribute('data-cus-author-id', contributor.id);
+				var refBtn = actions.querySelector('button');
+				var syncBtn = makeButton(cfg.i18n.sync, '', refBtn);
+				var inviteBtn = makeButton(cfg.i18n.invite, '', refBtn);
 				var run = function (force) {
 					return function () {
 						syncBtn.disabled = inviteBtn.disabled = true;
@@ -153,6 +195,7 @@
 						}
 						post(params).then(function (res) {
 							showMessage(item, res.content || cfg.i18n.error, res.status);
+							loadStatuses(panel, subId);
 						}).catch(function () {
 							showMessage(item, cfg.i18n.error, false);
 						}).finally(function () {
@@ -165,6 +208,11 @@
 				actions.appendChild(syncBtn);
 				actions.appendChild(inviteBtn);
 			});
+			// Fetch statuses only when rows were newly decorated; action handlers
+			// refresh badges themselves. Prevents an observer/poll feedback loop.
+			if (decoratedNew) {
+				loadStatuses(panel, subId);
+			}
 		}).catch(function () { /* API unavailable; leave the panel untouched */ });
 	}
 

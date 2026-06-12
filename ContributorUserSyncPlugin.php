@@ -285,6 +285,8 @@ class ContributorUserSyncPlugin extends GenericPlugin
                     return new JSONMessage(false, __('form.csrfInvalid'));
                 }
                 return $this->manageBulk($request, $verb === 'bulkRun');
+            case 'statuses':
+                return $this->manageStatuses($request);
             case 'syncOne':
             case 'syncAll':
                 if (!$request->checkCSRF()) {
@@ -341,6 +343,34 @@ class ContributorUserSyncPlugin extends GenericPlugin
             'rows' => $report->rows,
         ]);
         return new JSONMessage(true, $templateMgr->fetch($this->getTemplateResource('bulkReport.tpl')));
+    }
+
+    /**
+     * Read-only: last sync status per contributor of a submission's current
+     * publication, for the persistent badges in the contributors panel.
+     */
+    private function manageStatuses($request): JSONMessage
+    {
+        $context = $request->getContext();
+        $submission = Repo::submission()->get((int) $request->getUserVar('submissionId'), $context->getId());
+        if (!$submission) {
+            return new JSONMessage(false);
+        }
+        $authors = Repo::author()->getCollector()
+            ->filterByPublicationIds([(int) $submission->getData('currentPublicationId')])
+            ->getMany();
+        $map = [];
+        foreach ($authors as $author) {
+            $status = $author->getData(ContributorSyncService::SETTING_STATUS);
+            if (!$status) {
+                continue;
+            }
+            $map[(int) $author->getId()] = [
+                'label' => __('plugins.generic.contributorUserSync.outcome.' . $status),
+                'at' => (string) $author->getData(ContributorSyncService::SETTING_STATUS_AT),
+            ];
+        }
+        return new JSONMessage(true, $map);
     }
 
     /**

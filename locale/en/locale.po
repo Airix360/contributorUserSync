@@ -169,6 +169,9 @@ msgstr "ORCID synced from verified user profile"
 msgid "plugins.generic.contributorUserSync.outcome.orcidSkippedExisting"
 msgstr "Contributor already had an ORCID; skipped overwrite"
 
+msgid "plugins.generic.contributorUserSync.outcome.orcidRequestSent"
+msgstr "ORCID verification request emailed to contributor"
+
 msgid "plugins.generic.contributorUserSync.outcome.orcidSkippedUnverified"
 msgstr "User ORCID was not verified; skipped"
 

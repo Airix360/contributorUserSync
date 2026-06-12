@@ -22,6 +22,7 @@ class SyncReport
     public const LINKED = 'linked';
     public const ORCID_SYNCED = 'orcidSynced';
     public const ORCID_SKIPPED_EXISTING = 'orcidSkippedExisting';
+    public const ORCID_REQUEST_SENT = 'orcidRequestSent';
     public const ORCID_SKIPPED_UNVERIFIED = 'orcidSkippedUnverified';
     public const USER_CREATED = 'userCreated';
     public const INVITATION_SENT = 'invitationSent';

@@ -184,8 +184,7 @@ class ContributorSyncService
         // Nothing usable on the user side.
         if (empty($userOrcid) || (!$verified && !$allowManual)) {
             $report->record(SyncReport::SKIPPED_NO_VERIFIED_ORCID);
-            $this->applyNoVerifiedOrcidAction($author, $report, $apply);
-            return false;
+            return $this->applyNoVerifiedOrcidAction($author, $report, $apply);
         }
 
         $existing = $author->getOrcid();
@@ -226,15 +225,32 @@ class ContributorSyncService
 
     /**
      * When the matched user has no verified ORCID, react per the configured
-     * policy: do nothing, warn the editor, or flag an ORCID connection request.
+     * policy: do nothing, warn the editor, or send the contributor core's
+     * ORCID authorization-request email. Returns true if the author changed.
      */
-    private function applyNoVerifiedOrcidAction(Author $author, SyncReport $report, bool $apply): void
+    private function applyNoVerifiedOrcidAction(Author $author, SyncReport $report, bool $apply): bool
     {
         $action = $this->settings['orcidNoVerifiedAction'] ?? 'nothing';
-        if ($action === 'request' && $apply && !$author->getData('orcidVerificationRequested')) {
-            $author->setData('orcidVerificationRequested', true);
-        }
         // 'warn' and 'nothing' are surfaced purely through the report/feedback.
+        if ($action !== 'request' || !$apply) {
+            return false;
+        }
+        if ($author->getData('orcidVerificationRequested') && empty($this->settings['forceResend'])) {
+            return false; // already asked; don't nag on every save
+        }
+        if (
+            !class_exists('\PKP\jobs\orcid\SendAuthorMail')
+            || !\PKP\orcid\OrcidManager::isEnabled($this->context)
+        ) {
+            // ORCID not configured (or pre-3.5 core); nothing to send.
+            return false;
+        }
+        // updateAuthor=true so the email token persists even on async queues;
+        // the surrounding save cycle is hook-free for direct DAO updates.
+        dispatch(new \PKP\jobs\orcid\SendAuthorMail($author, $this->context, true));
+        $author->setData('orcidVerificationRequested', true);
+        $report->record(SyncReport::ORCID_REQUEST_SENT, $author->getEmail());
+        return true;
     }
 
     /**
@@ -303,7 +319,13 @@ class ContributorSyncService
     {
         $outcomes = $report->currentOutcomes();
         if ($apply && !empty($outcomes)) {
-            $author->setData(self::SETTING_STATUS, end($outcomes));
+            $newStatus = end($outcomes);
+            // A status transition counts as a change so callers persist it and
+            // the editor-facing badge reflects the latest outcome.
+            if ($author->getData(self::SETTING_STATUS) !== $newStatus) {
+                $changed = true;
+            }
+            $author->setData(self::SETTING_STATUS, $newStatus);
             $author->setData(self::SETTING_STATUS_AT, date('Y-m-d H:i:s'));
         }
         $report->endContributor((int) $author->getId(), $submissionId, $name, $email);
