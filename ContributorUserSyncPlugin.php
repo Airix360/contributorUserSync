@@ -235,10 +235,23 @@ class ContributorUserSyncPlugin extends GenericPlugin
      */
     public function getContributorRoleOptions(int $contextId): array
     {
-        $groups = Repo::userGroup()->getByRoleIds([Role::ROLE_ID_AUTHOR], $contextId);
+        $context = Application::get()->getRequest()->getContext();
+        $locale = $context && $context->getId() === $contextId
+            ? $context->getPrimaryLocale()
+            : null;
         $options = [];
-        foreach ($groups as $group) {
-            $options[(int) $group->getId()] = $group->getLocalizedName();
+        foreach (Repo::userGroup()->getByRoleIds([Role::ROLE_ID_AUTHOR], $contextId) as $group) {
+            // getByRoleIds() returns models without settings eager-loaded, so
+            // reload via get() to resolve the localized name. The display name is
+            // either a stored multilingual 'name' setting or, for default groups,
+            // a translatable nameLocaleKey (e.g. Author).
+            $groupId = (int) $group->id;
+            $loaded = Repo::userGroup()->get($groupId, $contextId) ?? $group;
+            $name = $loaded->getLocalizedData('name', $locale);
+            if (empty($name) && !empty($loaded->nameLocaleKey)) {
+                $name = __($loaded->nameLocaleKey, [], $locale);
+            }
+            $options[$groupId] = $name ?: ('#' . $groupId);
         }
         return $options;
     }

@@ -85,7 +85,8 @@ class NewUserService
 
         $ids = [];
         foreach ($authorGroups as $group) {
-            $ids[] = (int) $group->getId();
+            // Eloquent model: id is a property, not getId().
+            $ids[] = (int) $group->id;
         }
         if (empty($ids)) {
             return null;
