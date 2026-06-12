@@ -1,0 +1,20 @@
+name: PHP Lint & Syntax Check
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  php-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.0'
+      - name: Check PHP syntax
+        run: |
+          find . -type f -name '*.php' -exec php -l {} \;

@@ -1,0 +1,24 @@
+{
+  "roles": [
+    "Author",
+    "Co-author",
+    "Lead Author",
+    "Corresponding Author",
+    "Data Collector",
+    "Data Analyst",
+    "Resource Provider",
+    "Materials Provider",
+    "Editor",
+    "Translator",
+    "Proofreader",
+    "Reviewer",
+    "Layout Designer",
+    "Copyeditor",
+    "Ethics Advisor",
+    "Legal Advisor",
+    "Community Partner",
+    "Field Expert",
+    "Liaison Officer",
+    "Funding Coordinator"
+  ]
+}
