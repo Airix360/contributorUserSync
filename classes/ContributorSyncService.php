@@ -75,8 +75,14 @@ class ContributorSyncService
             $user = Repo::user()->getByEmail($email, true);
             if (!$user) {
                 $mode = $this->settings['syncMode'] ?? 'link';
-                if (in_array($mode, ['invite', 'create'], true) && $apply) {
-                    $user = $this->createMissingUser($author, $mode === 'invite', $report);
+                if ($mode === 'invite' && $apply) {
+                    $changed = $this->inviteContributor($author, $report);
+                    // No account exists until the invitation is accepted, so
+                    // there is nothing to link yet.
+                    return $this->finish($author, $submissionId, $name, $email, $report, $apply, $changed);
+                }
+                if ($mode === 'create' && $apply) {
+                    $user = $this->createMissingUser($author, $report);
                 }
                 if (!$user) {
                     // 'link' mode, preview mode, or creation not possible.
@@ -119,17 +125,49 @@ class ContributorSyncService
     }
 
     /**
-     * Create or invite a user account for a contributor with no match. Returns
-     * the new user, or null if creation was not possible (recorded as an error).
+     * Send an email invitation (OJS 3.5 invitation framework) to a contributor
+     * with no account. On OJS 3.4 falls back to a disabled placeholder account.
+     * Re-invitations are suppressed in automatic mode (set settings[forceResend]
+     * for explicit manual resends). Returns true if the author was changed.
      */
-    private function createMissingUser(Author $author, bool $invite, SyncReport $report): ?User
+    private function inviteContributor(Author $author, SyncReport $report): bool
     {
-        $user = (new NewUserService($this->context))->createForContributor($author, $invite);
+        $alreadyInvited = $author->getData(self::SETTING_STATUS) === SyncReport::INVITATION_SENT;
+        if ($alreadyInvited && empty($this->settings['forceResend'])) {
+            $report->record(SyncReport::SKIPPED_NO_USER, 'invitation pending');
+            return false;
+        }
+        try {
+            $newUserService = new NewUserService($this->context);
+            $groupId = $newUserService->resolveAuthorUserGroupId($author);
+            if (!$groupId) {
+                throw new \Exception('no_author_user_group');
+            }
+            if (InvitationService::isSupported()) {
+                (new InvitationService($this->context))->inviteContributor($author, $groupId);
+            } elseif (!$newUserService->createForContributor($author, true)) {
+                throw new \Exception('no_author_user_group');
+            }
+            $report->record(SyncReport::INVITATION_SENT, $author->getEmail());
+            return true; // persist the invitationSent status stamp
+        } catch (\Throwable $e) {
+            $report->record(SyncReport::ERROR, $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Create a user account for a contributor with no match. Returns the new
+     * user, or null if creation was not possible (recorded as an error).
+     */
+    private function createMissingUser(Author $author, SyncReport $report): ?User
+    {
+        $user = (new NewUserService($this->context))->createForContributor($author, false);
         if (!$user) {
             $report->record(SyncReport::ERROR, 'no_author_user_group');
             return null;
         }
-        $report->record($invite ? SyncReport::INVITATION_SENT : SyncReport::USER_CREATED, $user->getUsername());
+        $report->record(SyncReport::USER_CREATED, $user->getUsername());
         return $user;
     }
 

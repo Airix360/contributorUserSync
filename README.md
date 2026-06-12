@@ -113,9 +113,11 @@ written to the contributor's standard ORCID fields so they display and export no
 - The contributor edit modal in OJS is a Vue component; rich inline status badges are
   not injected there yet. Per-contributor outcomes are surfaced through the bulk-sync
   report and stored as an author setting. (Planned.)
-- **Invite mode** currently creates a disabled "awaiting setup" Author account rather
-  than dispatching OJS's full email-invitation workflow; full invitation-email
-  integration is the next milestone.
+- **Invite mode** uses OJS 3.5's invitation framework: the contributor receives an
+  email with an acceptance link and creates their own account (Author role only).
+  On OJS 3.4, which lacks that framework, invite mode falls back to creating a
+  disabled "awaiting setup" Author account. Automatic re-invitations are suppressed
+  once a contributor's status is "invitation sent"; the manual Invite button re-sends.
 - Matching is by **email only**. Name-only or ORCID-only matching is intentionally not
   attempted, to avoid false positives.
 

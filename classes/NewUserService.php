@@ -79,7 +79,7 @@ class NewUserService
      * author user group when it is an Author-role group; otherwise the first
      * Author-role group in the context.
      */
-    private function resolveAuthorUserGroupId(Author $author): ?int
+    public function resolveAuthorUserGroupId(Author $author): ?int
     {
         $authorGroups = Repo::userGroup()->getByRoleIds([Role::ROLE_ID_AUTHOR], $this->context->getId());
 

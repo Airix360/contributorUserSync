@@ -357,6 +357,8 @@ class ContributorUserSyncPlugin extends GenericPlugin
         $force = (string) $request->getUserVar('force');
         if ($verb === 'syncOne' && in_array($force, ['invite', 'create'], true)) {
             $settings['syncMode'] = $force;
+            // An explicit Invite click may re-send a pending invitation.
+            $settings['forceResend'] = true;
         } elseif (($settings['syncMode'] ?? 'nothing') === 'nothing') {
             $settings['syncMode'] = 'link';
         }
