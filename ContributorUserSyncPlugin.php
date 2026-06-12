@@ -88,7 +88,8 @@ class ContributorUserSyncPlugin extends GenericPlugin
      */
     private function syncSingle($author): void
     {
-        $context = Application::get()->getRequest()->getContext();
+        $request = Application::get()->getRequest();
+        $context = $request->getContext();
         if (!$context) {
             return;
         }
@@ -96,8 +97,50 @@ class ContributorUserSyncPlugin extends GenericPlugin
         if (!$service->isEnabled()) {
             return;
         }
+
+        // Authors carry a publicationId, not a submissionId; resolve it for the report.
+        $submissionId = 0;
+        if ($publicationId = (int) $author->getData('publicationId')) {
+            $publication = Repo::publication()->get($publicationId);
+            $submissionId = $publication ? (int) $publication->getData('submissionId') : 0;
+        }
+
         $report = new SyncReport();
-        $service->processAuthor($author, (int) $author->getData('submissionId'), $report, true);
+        $service->processAuthor($author, $submissionId, $report, true);
+        $this->notifyEditor($request, $report);
+    }
+
+    /**
+     * Surface the sync outcome to the editor performing the edit as a trivial
+     * notification (matched, ORCID synced, skipped overwrite, no verified ORCID…).
+     */
+    private function notifyEditor($request, SyncReport $report): void
+    {
+        $user = $request->getUser();
+        if (!$user || empty($report->rows)) {
+            return;
+        }
+        $outcomes = $report->rows[0]['outcomes'];
+        if (empty($outcomes)) {
+            return;
+        }
+        // Honour the "warn" policy: only mention a missing verified ORCID when asked to.
+        if (
+            $outcomes === [SyncReport::MATCHED_USER, SyncReport::SKIPPED_NO_VERIFIED_ORCID]
+            && ($this->resolveSettings($request->getContext()->getId())['orcidNoVerifiedAction'] ?? 'nothing') === 'nothing'
+        ) {
+            $outcomes = [SyncReport::MATCHED_USER];
+        }
+        $messages = array_map(
+            fn (string $outcome) => __('plugins.generic.contributorUserSync.outcome.' . $outcome),
+            $outcomes
+        );
+        $notificationManager = new NotificationManager();
+        $notificationManager->createTrivialNotification(
+            $user->getId(),
+            \PKP\notification\Notification::NOTIFICATION_TYPE_SUCCESS,
+            ['contents' => __('plugins.generic.contributorUserSync.displayName') . ': ' . implode('; ', $messages)]
+        );
     }
 
     // --------------------------------------------------------------- Settings
@@ -155,9 +198,13 @@ class ContributorUserSyncPlugin extends GenericPlugin
             case 'settings':
                 return $this->manageSettings($args, $request);
             case 'bulkPreview':
-                return $this->manageBulk($request, false);
             case 'bulkRun':
-                return $this->manageBulk($request, true);
+                // PluginGridHandler::manage() delegates without a CSRF check, so
+                // enforce it here: bulkRun mutates data, and preview shares the path.
+                if (!$request->checkCSRF()) {
+                    return new JSONMessage(false, __('form.csrfInvalid'));
+                }
+                return $this->manageBulk($request, $verb === 'bulkRun');
             case 'bulkExport':
                 $this->downloadLastReport($request);
                 // downloadLastReport emits the file and exits; this is unreachable.

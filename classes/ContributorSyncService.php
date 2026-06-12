@@ -99,6 +99,12 @@ class ContributorSyncService
                 $changed = $this->copyNamesFromUser($author, $user, $apply) || $changed;
             }
 
+            // --- Optionally fill empty user profile names from the contributor
+            // (off by default; never overwrites an existing profile name) -----
+            if (!empty($this->settings['updateUserFromContributor'])) {
+                $this->copyNamesToUser($author, $user, $apply);
+            }
+
             // --- ORCID auto-sync --------------------------------------------
             if (!empty($this->settings['orcidAutoSync'])) {
                 $changed = $this->syncOrcid($author, $user, $report, $apply) || $changed;
@@ -211,6 +217,29 @@ class ContributorSyncService
             }
         }
         return $changed;
+    }
+
+    /**
+     * Fill empty user profile given/family names from the contributor and
+     * persist the user. Never overwrites an existing profile name. The user is
+     * a separate entity, so saving it here cannot recurse into the author hooks.
+     */
+    private function copyNamesToUser(Author $author, User $user, bool $apply): void
+    {
+        $changed = false;
+        foreach (['GivenName', 'FamilyName'] as $field) {
+            $authorValues = $author->{'get' . $field}(null) ?? [];
+            $userValues = $user->{'get' . $field}(null) ?? [];
+            foreach ($authorValues as $locale => $value) {
+                if (!empty($value) && empty($userValues[$locale] ?? null)) {
+                    $user->{'set' . $field}($value, $locale);
+                    $changed = true;
+                }
+            }
+        }
+        if ($changed && $apply) {
+            Repo::user()->edit($user);
+        }
     }
 
     /**

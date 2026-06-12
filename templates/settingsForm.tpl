@@ -16,7 +16,7 @@
 			$out.html('{translate key="plugins.generic.contributorUserSync.bulk.running"}');
 			$.post(
 				'{url|escape:"javascript" router=$smarty.const.ROUTE_COMPONENT op="manage" category="generic" plugin=$pluginName escape=false}',
-				{ldelim} verb: verb {rdelim},
+				{ldelim} verb: verb, csrfToken: {csrf type="json"} {rdelim},
 				function(data) {ldelim} $out.html(data.content); {rdelim}
 			);
 		{rdelim}
