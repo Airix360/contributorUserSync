@@ -60,7 +60,9 @@ class InvitationService
             'dateStart' => date('Y-m-d'),
             'dateEnd' => null,
         ]];
-        $payload->shouldUseInviteData = true;
+        // NOTE: do not set shouldUseInviteData — that flag makes the manager UI
+        // read inviteStagePayload (used by core's staged invite wizard), and
+        // with it unset there the Users & Roles invitations tab fatals.
 
         if (!$invitation->updatePayload()) {
             throw new \Exception('Invitation payload failed validation');

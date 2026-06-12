@@ -102,9 +102,11 @@ class ContributorSyncService
                 $changed = true;
             }
 
-            // --- Optionally refresh contributor names from the user profile --
+            // --- Optionally refresh contributor names/affiliation from the
+            // user profile (fill-empty only, never overwrites) ----------------
             if (!empty($this->settings['updateContributorFromUser'])) {
                 $changed = $this->copyNamesFromUser($author, $user, $apply) || $changed;
+                $changed = $this->copyAffiliationFromUser($author, $user, $submissionId, $apply) || $changed;
             }
 
             // --- Optionally fill empty user profile names from the contributor
@@ -273,6 +275,33 @@ class ContributorSyncService
             }
         }
         return $changed;
+    }
+
+    /**
+     * Copy the user profile's affiliation to a contributor that has none, using
+     * core's user→author affiliation migration (OJS 3.5 structured
+     * affiliations). Never overwrites an existing contributor affiliation.
+     */
+    private function copyAffiliationFromUser(Author $author, User $user, int $submissionId, bool $apply): bool
+    {
+        if (!method_exists($author, 'getAffiliations') || !empty($author->getAffiliations())) {
+            return false;
+        }
+        if (empty($user->getData('affiliation')) || !$submissionId) {
+            return false;
+        }
+        $submission = Repo::submission()->get($submissionId);
+        if (!$submission) {
+            return false;
+        }
+        $affiliation = Repo::affiliation()->migrateUserAffiliation($user, $submission, $this->context);
+        if (!$affiliation) {
+            return false;
+        }
+        if ($apply) {
+            $author->setAffiliations([$affiliation]);
+        }
+        return true;
     }
 
     /**
