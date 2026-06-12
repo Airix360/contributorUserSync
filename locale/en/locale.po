@@ -153,6 +153,9 @@ msgstr "Errors"
 msgid "plugins.generic.contributorUserSync.report.outcome"
 msgstr "Outcome"
 
+msgid "plugins.generic.contributorUserSync.report.submissionId"
+msgstr "Submission ID"
+
 # --- Outcome labels (editor-facing feedback)
 msgid "plugins.generic.contributorUserSync.outcome.matchedUser"
 msgstr "Matched existing user"

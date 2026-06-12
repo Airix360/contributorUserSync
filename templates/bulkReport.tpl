@@ -30,7 +30,7 @@
 		<table class="pkpTable" style="margin-top:1rem;">
 			<thead>
 				<tr>
-					<th>{translate key="submission.submissionId"}</th>
+					<th>{translate key="plugins.generic.contributorUserSync.report.submissionId"}</th>
 					<th>{translate key="user.name"}</th>
 					<th>{translate key="user.email"}</th>
 					<th>{translate key="plugins.generic.contributorUserSync.report.outcome"}</th>
