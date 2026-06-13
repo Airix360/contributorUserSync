@@ -1,136 +1,224 @@
+<div align="center">
+
 # Contributor User Sync
 
-**Contributor User Sync links OJS submission contributors to user accounts and automatically reuses verified ORCID iDs from existing user profiles, reducing repeated ORCID prompts and improving author metadata quality.**
+### An OJS plugin that links submission contributors to real user accounts and reuses their **verified ORCID iDs** — automatically.
+
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![OJS](https://img.shields.io/badge/OJS-3.4%20%7C%203.5-006798.svg)](https://pkp.sfu.ca/software/ojs/)
+[![PHP](https://img.shields.io/badge/PHP-8.2%2B-777bb4.svg)](https://www.php.net/)
+[![Release](https://img.shields.io/github/v/release/thathman/contributorUserSync?color=green&label=release)](https://github.com/thathman/contributorUserSync/releases)
+[![Sponsor](https://img.shields.io/badge/%E2%9D%A4%20Sponsor-GitHub%20Sponsors-ea4aaa.svg)](https://github.com/sponsors/thathman)
+
+**[Features](#-features) · [Screenshots](#-screenshots) · [Install](#-installation) · [Configure](#%EF%B8%8F-configuration) · [How it works](#-how-it-works) · [Safety](#-safety--privacy) · [Sponsor](#-sponsor)**
+
+</div>
+
+---
+
+> **Contributor User Sync links OJS submission contributors to user accounts and automatically reuses verified ORCID iDs from existing user profiles, reducing repeated ORCID prompts and improving author metadata quality.**
 
 ## The problem it solves
 
-In OJS, a contributor/author listed on a submission is not necessarily connected to a
-real OJS user account — the `authors` table has no `userId` column, so contributor
-metadata and user accounts live independently. As a result:
+In OJS, a contributor/author listed on a submission is **not** necessarily connected to a
+real OJS user account — the `authors` table has no `userId` column, so contributor metadata
+and user accounts live independently. As a result:
 
-- The same person is re-entered as a contributor on every submission, with no link
-  back to their account.
-- An author who has already connected and **verified** their ORCID iD in their user
-  profile is still asked to connect ORCID *again*, per submission. This confuses
-  authors and produces inconsistent, often missing, ORCID metadata.
+- The same person is re-entered as a contributor on every submission, with no link back to
+  their account.
+- An author who has already connected and **verified** their ORCID iD in their user profile
+  is still asked to connect ORCID *again*, per submission. This confuses authors and produces
+  inconsistent — often missing — ORCID metadata.
+- Editors have no quick way to tell which contributors correspond to real users, or to invite
+  the ones who don't yet have accounts.
 
-Contributor User Sync closes that gap: it matches contributors to existing users by
-email, records the link, and copies the user's already-verified ORCID iD into the
-submission's contributor metadata so the author is never asked to reconnect.
+Contributor User Sync closes that gap: it matches contributors to existing users by email,
+records the link, copies the user's already-verified ORCID iD into the submission's
+contributor metadata, and gives editors one-click **Sync** / **Invite** actions plus a
+journal-wide bulk tool.
 
-## Key features
+---
 
-1. **Contributor-to-user matching** — when a contributor is added or updated, the
-   plugin looks up an OJS user with the same email and links them.
-2. **ORCID auto-sync** — if the matched user has a *verified* ORCID iD, it is copied
-   into the contributor's metadata (including the OAuth verification fields, so the
-   contributor reads as verified). The author is not asked to reconnect.
-3. **Sync modes** — do nothing / link existing users only / invite missing
-   contributors / automatically create missing accounts.
-4. **Contributor role filtering** — choose which contributor (author) roles are
-   eligible for syncing.
-5. **Existing-user options** — optionally fill empty contributor names from the user
-   profile; optionally (off by default) push contributor names back to the profile.
-6. **New-user onboarding** — created/invited accounts get the **Author role only**;
-   no generated passwords are emailed.
-7. **Bulk sync** — scan previous submissions, preview as a dry run, then apply, with a
-   downloadable CSV report.
-8. **Editor-facing outcomes** — every contributor gets a clear status: matched, ORCID
-   synced, already had ORCID (skipped overwrite), no matching user, matched but no
-   verified ORCID, or skipped (missing email).
+## ✨ Features
 
-## ORCID auto-sync behaviour
+| | Feature | What it does |
+|---|---|---|
+| 🔗 | **Contributor → user matching** | On add/edit, finds the OJS user with the same email and links them (stored as an author setting). |
+| 🆔 | **Verified ORCID auto-sync** | Copies a *verified* ORCID iD (with its OAuth proof) from the matched user into the contributor, so they read as verified and are never re-prompted. |
+| 🎛️ | **Four sync modes** | Do nothing · link existing users only · invite missing contributors · auto-create accounts. |
+| 🧑‍🤝‍🧑 | **Role filtering** | Choose which contributor (author) roles are eligible for syncing. |
+| 🖱️ | **Per-contributor actions** | **Sync** and **Invite** buttons on every contributor row, plus a panel-level **Sync Contributors**, with persistent status badges. |
+| 📨 | **Real email invitations** | Missing contributors get an OJS invitation with an acceptance link and create their own account (Author role only — no emailed passwords). |
+| 🔔 | **"You were added" notifications** | Optionally email contributors when added to a submission, with a **decline** link that removes them. |
+| 📋 | **ORCID connection requests** | When a matched user has no verified ORCID, optionally email them OJS's ORCID authorization request. |
+| 📊 | **Bulk sync + CSV report** | Scan every prior submission: preview (dry run) then apply, with a downloadable report. |
+| 🔢 | **Submission-wizard count gate** | Optionally require the submitter to declare a contributor count and match it before submitting. |
+| 🛡️ | **Safe by default** | Verified-only ORCID, never overwrites, never auto-creates, Author role only, multi-journal scoped. |
 
-- Only **verified** ORCID iDs (those carrying `orcidIsVerified` from a completed ORCID
-  OAuth flow) are synced by default.
-- A manually typed, unverified profile ORCID is **never** treated as verified. It is
-  only synced if the admin explicitly enables *"sync manually entered ORCID"*, and even
-  then it is stored on the contributor as unverified.
-- An ORCID iD the contributor already has is **never overwritten** unless the admin
-  explicitly enables overwrite.
-- If the matched user has no verified ORCID, the plugin can do nothing, warn the editor
-  in the report, or flag the contributor for an ORCID connection request — your choice.
+---
 
-## Safe defaults
+## 📸 Screenshots
 
-Out of the box the plugin is conservative:
+> Captured live on OJS 3.5.
+
+### Plugin settings
+All behaviour in one place, grouped into clear sections.
+
+![Settings page](docs/img/01-settings.png)
+
+### Per-contributor Sync / Invite + status badges
+**Sync** and **Invite** sit beside the native contributor actions and match the theme; each
+contributor shows a live status badge.
+
+![Contributors panel](docs/img/02-contributors-panel.png)
+
+![Row synced](docs/img/03-row-synced.png)
+
+### Email invitation
+A missing contributor receives a real OJS invitation with accept / decline links.
+
+![Invitation email](docs/img/04-invitation-email.png)
+
+### "Added to submission" notification (with decline-to-remove)
+The contributor is told which submission they were added to and can decline to be removed.
+
+![Added notification](docs/img/06-added-notification.png)
+
+![Confirm / decline page](docs/img/07-approval-page.png)
+
+### Bulk sync report
+Scan the whole journal, preview, then apply — with a downloadable CSV.
+
+![Bulk report](docs/img/05-bulk-report.png)
+
+### Submission-wizard contributor-count gate
+![Contributor count](docs/img/08-count-gate.png)
+
+---
+
+## 📦 Installation
+
+**From the OJS Plugin Gallery** *(once published)*
+> Dashboard → **Settings → Website → Plugins → Plugin Gallery** → search **Contributor User
+> Sync** → **Install**.
+
+**From a release archive**
+1. Download `contributorUserSync.tar.gz` from the [Releases](https://github.com/thathman/contributorUserSync/releases) page.
+2. Dashboard → **Settings → Website → Plugins → Upload A New Plugin**.
+3. Enable **Contributor User Sync** under **Generic Plugins**.
+
+**Manually (from source)**
+```bash
+cd ojs/plugins/generic
+git clone https://github.com/thathman/contributorUserSync.git
+```
+No database upgrade is required — the plugin stores its data in standard plugin, author, and
+publication settings.
+
+---
+
+## ⚙️ Configuration
+
+Open the plugin's **Settings**. Sections:
+
+- **General** — master enable.
+- **Sync behaviour** — the four sync modes.
+- **ORCID auto-sync** — copy verified ORCID; overwrite (off); allow manual (off); what to do
+  when no verified ORCID exists (nothing / warn / send request).
+- **Contributor roles** — which roles are eligible.
+- **Existing users** — fill empty contributor names/affiliation from the profile; push names
+  to the profile (off).
+- **New users** — Author role only.
+- **Contributor notifications** — notify on add (with decline); require a contributor count.
+- **Bulk sync** — preview / run / export.
+
+### Safe defaults
 
 | Setting | Default |
-| --- | --- |
-| Plugin enabled | Off (enable per journal) |
+|---|---|
+| Plugin sync enabled | **Off** |
 | Sync mode | **Link existing users only** |
-| ORCID auto-sync | On (verified only) |
+| ORCID auto-sync (verified) | On |
 | Overwrite existing contributor ORCID | Off |
 | Sync manually entered ORCID | Off |
 | Auto-create users | Off |
 | Push contributor name to user profile | Off |
+| Notify added contributors | Off |
+| Require contributor count | Off |
 | Created-user role | Author only |
 
-It never creates Editor or Reviewer accounts, never emails generated passwords, and
-never writes passwords or tokens to the report/logs. It operates strictly within the
-journal (context) it is configured for, so it is safe on multi-journal installations.
+Start with the defaults, run a **Bulk sync preview** to see what *would* change, then apply.
 
-## Bulk sync
+---
 
-From the plugin settings page, **Bulk sync** scans the contributors of previous
-submissions in the current journal:
+## 🔍 How it works
 
-- **Preview** runs a complete dry run and changes nothing.
-- **Run** applies the configured rules.
+- **Matching** is by **email only** — name- or ORCID-only matching is intentionally avoided to
+  prevent false positives.
+- **The link** is stored as a plugin-owned author setting (`contributorUserSyncUserId`,
+  registered on the author schema) because core OJS authors have no `userId` column. Synced
+  ORCID values are written to the contributor's standard ORCID fields so they display and
+  export normally.
+- **ORCID** is only treated as verified when it carries `orcidIsVerified` from a completed
+  ORCID OAuth flow. A manually typed profile iD is synced only if you explicitly allow it, and
+  is then stored as **unverified**.
+- **Invitations** use the OJS 3.5 invitation framework; on OJS 3.4 they fall back to a disabled
+  "awaiting setup" Author account. No generated passwords are emailed.
+- **Decline links** and the **confirm/decline page** are authenticated with a per-contributor
+  key; declining deletes the contributor from the list.
+- Everything is **scoped to the journal (context)** it runs in — safe on multi-journal
+  installations.
 
-Both produce a report with: total contributors scanned, existing users matched, new
-users created, invitations sent, ORCID iDs synced, contributors skipped (no email / no
-matching user / no verified ORCID), and errors. The report is downloadable as CSV.
+---
 
-## Installation
+## 🛡️ Safety & privacy
 
-1. Copy this directory to `plugins/generic/contributorUserSync` in your OJS
-   installation (or install the packaged `.tar.gz` via **Settings → Website → Plugins →
-   Upload a New Plugin**).
-2. Run the data upgrade if prompted (`php tools/upgrade.php upgrade`), or simply enable
-   the plugin — it stores its data in standard plugin/author settings and needs no schema
-   changes.
-3. Enable **Contributor User Sync** under **Settings → Website → Plugins → Generic
-   Plugins**.
+- Never overwrites an existing contributor ORCID unless explicitly enabled.
+- Never treats an unverified/manual ORCID as verified.
+- Never creates Editor or Reviewer accounts — only the Author role.
+- Avoids emailing generated passwords; uses invitation / activation workflows.
+- Never writes passwords or tokens to reports or logs.
+- All manager actions are CSRF-protected.
 
-## Configuration
+---
 
-Open the plugin's **Settings** for sections covering: General, Sync behaviour, ORCID
-auto-sync, Contributor roles, Existing users, New users, and Bulk sync. Start by
-enabling the plugin with the default *link existing users only* + *verified ORCID
-sync*, run a **Bulk sync preview** to see what would change, then apply.
+## 🔄 Compatibility
 
-## How the link is stored
+| OJS | Status |
+|---|---|
+| **3.5** | ✅ Built and tested against (namespaced plugin API, `Hook::add`, `Repo::*`, `HasOrcid`, invitation framework). |
+| **3.4** | ☑️ Core matching/ORCID paths share the same model; invitations fall back to disabled placeholder accounts. |
+| **3.3** | ❌ Out of scope — uses the older array-based plugin/hook API and a different ORCID storage shape. |
 
-Because core OJS authors have no `userId` field, the contributor→user link is stored as
-a plugin-owned author setting (`contributorUserSyncUserId`, registered on the author
-schema via the `Schema::get::author` hook) in the `author_settings` table, alongside a
-last-status stamp used for editor feedback. Synced ORCID values are
-written to the contributor's standard ORCID fields so they display and export normally.
+---
 
-## Limitations
+## ❤️ Sponsor
 
-- The contributor edit modal in OJS is a Vue component; rich inline status badges are
-  not injected there yet. Per-contributor outcomes are surfaced through the bulk-sync
-  report and stored as an author setting. (Planned.)
-- **Invite mode** uses OJS 3.5's invitation framework: the contributor receives an
-  email with an acceptance link and creates their own account (Author role only).
-  On OJS 3.4, which lacks that framework, invite mode falls back to creating a
-  disabled "awaiting setup" Author account. Automatic re-invitations are suppressed
-  once a contributor's status is "invitation sent"; the manual Invite button re-sends.
-- Matching is by **email only**. Name-only or ORCID-only matching is intentionally not
-  attempted, to avoid false positives.
+Contributor User Sync is free and open source, built and maintained by
+[**Hendrix Nwaokolo / Airix Media**](https://airixmedia.com). If it saves your editorial team
+time, please consider sponsoring continued development and support:
 
-## Compatibility
+<div align="center">
 
-- **Built and tested against OJS 3.5** (namespaced plugin API, `Hook::add`,
-  `Repo::author()` / `Repo::user()`, the `HasOrcid` trait).
-- The author/user ORCID model and hooks are shared with **OJS 3.4**, so the core
-  matching and ORCID-sync paths are expected to work there with minor adjustment.
-- **OJS 3.3** uses the older array-based plugin/hook API and a different ORCID storage
-  shape; it is **not** supported by this build. A 3.3 backport would need a separate
-  compatibility branch, and that is called out rather than shipped untested.
+[![Sponsor on GitHub](https://img.shields.io/badge/Sponsor-GitHub%20Sponsors-ea4aaa?style=for-the-badge&logo=githubsponsors)](https://github.com/sponsors/thathman)
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20me%20a%20coffee-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=black)](https://www.buymeacoffee.com/thathman)
+[![Airix Media](https://img.shields.io/badge/Airix%20Media-airixmedia.com-006798?style=for-the-badge)](https://airixmedia.com)
 
-## License
+</div>
 
-GNU GPL v3. See [LICENSE](LICENSE).
+Sponsorship funds OJS-version compatibility updates, new features (richer reporting, more
+notification options), and responsive issue support.
+
+---
+
+## 🤝 Contributing & support
+
+- **Issues / feature requests:** [GitHub Issues](https://github.com/thathman/contributorUserSync/issues)
+- **Pull requests** welcome — please run `php -l` on changed files and keep behaviour behind
+  settings with safe defaults.
+
+## ⚖️ License
+
+GNU General Public License v3.0 — see [LICENSE](LICENSE).
+
+© 2026 Hendrix Nwaokolo / Airix Media.
