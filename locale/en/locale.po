@@ -209,6 +209,58 @@ msgstr "Sync Contributors"
 msgid "plugins.generic.contributorUserSync.action.error"
 msgstr "The sync request failed. Check that you have journal-manager access."
 
+# --- Contributor notifications / wizard settings
+msgid "plugins.generic.contributorUserSync.settings.notify"
+msgstr "Contributor notifications"
+
+msgid "plugins.generic.contributorUserSync.settings.notify.desc"
+msgstr "Email contributors when they are added to a submission, and optionally require the submitter to declare how many contributors they will add."
+
+msgid "plugins.generic.contributorUserSync.settings.notifyAddedContributors"
+msgstr "Notify contributors when added to a submission (with a decline link that removes them)"
+
+msgid "plugins.generic.contributorUserSync.settings.requireContributorCount"
+msgstr "Require the submitter to declare a contributor count and match it before submitting"
+
+# --- Added-to-submission notification email
+msgid "plugins.generic.contributorUserSync.notify.name"
+msgstr "Contributor added to submission"
+
+msgid "plugins.generic.contributorUserSync.notify.description"
+msgstr "Sent to a contributor when they are added to a submission, offering confirm or decline."
+
+msgid "plugins.generic.contributorUserSync.notify.subject"
+msgstr "You were added as a contributor to \"{$title}\""
+
+msgid "plugins.generic.contributorUserSync.notify.body"
+msgstr ""
+"<p>Dear {$name},</p>"
+"<p>You have been listed as a contributor on the submission <strong>\"{$title}\"</strong> in {$journal}.</p>"
+"<p>If this is correct, you can confirm here:</p>"
+"<p><a href=\"{$confirmUrl}\">Confirm my contribution</a></p>"
+"<p>If you should not be on this submission, you can decline and be removed from the contributor list:</p>"
+"<p><a href=\"{$declineUrl}\">Decline and remove me</a></p>"
+
+# --- Confirm / decline result page
+msgid "plugins.generic.contributorUserSync.approval.title"
+msgstr "Contribution status"
+
+msgid "plugins.generic.contributorUserSync.approval.confirmed"
+msgstr "Thank you — your contribution to this submission has been confirmed."
+
+msgid "plugins.generic.contributorUserSync.approval.declined"
+msgstr "You have been removed from the contributor list for this submission."
+
+msgid "plugins.generic.contributorUserSync.approval.invalid"
+msgstr "This link is invalid or has already been used."
+
+# --- Wizard contributor-count gate
+msgid "plugins.generic.contributorUserSync.wizard.countMismatch"
+msgstr "You declared {$expected} contributor(s) but the submission has {$actual}. Please add or remove contributors so the numbers match before submitting."
+
+msgid "plugins.generic.contributorUserSync.wizard.countLabel"
+msgstr "How many contributors will this submission have?"
+
 # --- New-user account state
 msgid "plugins.generic.contributorUserSync.user.awaitingSetup"
 msgstr "Account created by Contributor User Sync; awaiting activation by the contributor."

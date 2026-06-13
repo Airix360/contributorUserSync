@@ -51,12 +51,20 @@ class ContributorUserSyncPlugin extends GenericPlugin
             // Register the plugin's author properties; without this the
             // EntityDAO strips them on save and the user link is never stored.
             Hook::add('Schema::get::author', [$this, 'onAuthorSchema']);
+            // Register the declared contributor-count property on publications.
+            Hook::add('Schema::get::publication', [$this, 'onPublicationSchema']);
             // Edits: mutate the about-to-be-saved author in place.
             Hook::add('Author::edit', [$this, 'onAuthorEdit']);
             // Adds: mutate before insert so changes persist with the new row.
             Hook::add('Author::add::before', [$this, 'onAuthorAddBefore']);
             // Per-contributor Sync/Invite buttons in the workflow contributors panel.
             Hook::add('TemplateManager::display', [$this, 'onTemplateDisplay']);
+            // Notify newly added contributors (confirm/decline) when enabled.
+            Hook::add('Author::add', [$this, 'onAuthorAdded']);
+            // Public confirm/decline page.
+            Hook::add('LoadHandler', [$this, 'onLoadHandler']);
+            // Submission-wizard contributor-count gate.
+            Hook::add('Submission::validateSubmit', [$this, 'onValidateSubmit']);
         }
         return true;
     }
@@ -86,6 +94,111 @@ class ContributorUserSyncPlugin extends GenericPlugin
             'apiSummary' => false,
             'validation' => ['nullable'],
         ];
+        $schema->properties->{\APP\plugins\generic\contributorUserSync\classes\NotificationService::SETTING_APPROVAL_KEY} = (object) [
+            'type' => 'string',
+            'apiSummary' => false,
+            'validation' => ['nullable'],
+        ];
+        return Hook::CONTINUE;
+    }
+
+    /**
+     * Register the declared contributor-count property on the publication schema.
+     *
+     * @param array $args [stdClass $schema]
+     */
+    public function onPublicationSchema(string $hookName, array $args): int
+    {
+        $args[0]->properties->contributorUserSyncExpectedCount = (object) [
+            'type' => 'integer',
+            'apiSummary' => false,
+            'validation' => ['nullable'],
+        ];
+        return Hook::CONTINUE;
+    }
+
+    /**
+     * Notify a contributor that they were added to a submission (confirm/decline).
+     *
+     * @param array $args [$author]
+     */
+    public function onAuthorAdded(string $hookName, array $args): int
+    {
+        if (self::$suspendHook) {
+            return Hook::CONTINUE;
+        }
+        $author = $args[0];
+        $publication = Repo::publication()->get((int) $author->getData('publicationId'));
+        $submission = $publication ? Repo::submission()->get((int) $publication->getData('submissionId')) : null;
+        if (!$submission) {
+            return Hook::CONTINUE;
+        }
+        // Resolve context from the submission, not the request (works in API/CLI).
+        $context = Application::getContextDAO()->getById((int) $submission->getData('contextId'));
+        if (!$context || !$this->getSetting($context->getId(), 'notifyAddedContributors')) {
+            return Hook::CONTINUE;
+        }
+        try {
+            $service = new \APP\plugins\generic\contributorUserSync\classes\NotificationService($context);
+            if ($service->notifyAdded($author, $submission, true)) {
+                // Persist the approval key written onto the author.
+                self::$suspendHook = true;
+                Repo::author()->edit($author, []);
+                self::$suspendHook = false;
+            }
+        } catch (\Throwable $e) {
+            self::$suspendHook = false;
+            error_log('contributorUserSync notify failed: ' . $e->getMessage());
+        }
+        return Hook::CONTINUE;
+    }
+
+    /**
+     * Route /contributorApproval/{confirm|decline} to the public handler.
+     *
+     * @param array $args [&$page, &$op, &$sourceFile, &$handler]
+     */
+    public function onLoadHandler(string $hookName, array $args): int
+    {
+        $page = $args[0];
+        $op = $args[1];
+        if ($page !== 'contributorApproval') {
+            return Hook::CONTINUE;
+        }
+        if (!in_array($op, ['confirm', 'decline'], true)) {
+            return Hook::CONTINUE;
+        }
+        $args[3] = new ContributorApprovalHandler($this);
+        return true;
+    }
+
+    /**
+     * Enforce the declared contributor count on submit, if configured.
+     *
+     * @param array $args [&$errors, $submission, $context]
+     */
+    public function onValidateSubmit(string $hookName, array $args): int
+    {
+        $errors = &$args[0];
+        $submission = $args[1];
+        $context = $args[2];
+        if (!$this->getSetting($context->getId(), 'requireContributorCount')) {
+            return Hook::CONTINUE;
+        }
+        $publication = $submission->getCurrentPublication();
+        $expected = (int) $publication->getData('contributorUserSyncExpectedCount');
+        if ($expected < 1) {
+            return Hook::CONTINUE; // not declared; nothing to enforce
+        }
+        $actual = count(Repo::author()->getCollector()
+            ->filterByPublicationIds([(int) $publication->getId()])
+            ->getMany()->all());
+        if ($actual !== $expected) {
+            $errors['contributors'] = [__('plugins.generic.contributorUserSync.wizard.countMismatch', [
+                'expected' => $expected,
+                'actual' => $actual,
+            ])];
+        }
         return Hook::CONTINUE;
     }
 
@@ -203,11 +316,13 @@ class ContributorUserSyncPlugin extends GenericPlugin
             ),
             'apiBase' => $dispatcher->url($request, \PKP\core\PKPApplication::ROUTE_API, $context->getPath(), 'submissions'),
             'csrfToken' => $request->getSession()->token(),
+            'requireCount' => (bool) $this->getSetting($context->getId(), 'requireContributorCount'),
             'i18n' => [
                 'sync' => __('plugins.generic.contributorUserSync.action.sync'),
                 'invite' => __('plugins.generic.contributorUserSync.action.invite'),
                 'syncAll' => __('plugins.generic.contributorUserSync.action.syncAll'),
                 'error' => __('plugins.generic.contributorUserSync.action.error'),
+                'countLabel' => __('plugins.generic.contributorUserSync.wizard.countLabel'),
             ],
         ];
         $templateMgr->addJavaScript(
@@ -242,6 +357,8 @@ class ContributorUserSyncPlugin extends GenericPlugin
             'updateContributorFromUser' => (bool) $get('updateContributorFromUser', false),
             'updateUserFromContributor' => (bool) $get('updateUserFromContributor', false),
             'createUserRole' => $get('createUserRole', 'author'),
+            'notifyAddedContributors' => (bool) $get('notifyAddedContributors', false),
+            'requireContributorCount' => (bool) $get('requireContributorCount', false),
             'eligibleRoles' => (array) ($this->getSetting($contextId, 'eligibleRoles') ?? []),
         ];
     }
@@ -287,6 +404,11 @@ class ContributorUserSyncPlugin extends GenericPlugin
                 return $this->manageBulk($request, $verb === 'bulkRun');
             case 'statuses':
                 return $this->manageStatuses($request);
+            case 'setCount':
+                if (!$request->checkCSRF()) {
+                    return new JSONMessage(false, __('form.csrfInvalid'));
+                }
+                return $this->manageSetCount($request);
             case 'syncOne':
             case 'syncAll':
                 if (!$request->checkCSRF()) {
@@ -346,6 +468,22 @@ class ContributorUserSyncPlugin extends GenericPlugin
     }
 
     /**
+     * Persist the submitter's declared contributor count on the publication.
+     */
+    private function manageSetCount($request): JSONMessage
+    {
+        $context = $request->getContext();
+        $submission = Repo::submission()->get((int) $request->getUserVar('submissionId'), $context->getId());
+        if (!$submission) {
+            return new JSONMessage(false);
+        }
+        $publication = $submission->getCurrentPublication();
+        $count = max(0, (int) $request->getUserVar('count'));
+        Repo::publication()->edit($publication, ['contributorUserSyncExpectedCount' => $count]);
+        return new JSONMessage(true, ['count' => $count]);
+    }
+
+    /**
      * Read-only: last sync status per contributor of a submission's current
      * publication, for the persistent badges in the contributors panel.
      */
@@ -370,7 +508,10 @@ class ContributorUserSyncPlugin extends GenericPlugin
                 'at' => (string) $author->getData(ContributorSyncService::SETTING_STATUS_AT),
             ];
         }
-        return new JSONMessage(true, $map);
+        return new JSONMessage(true, [
+            'authors' => $map,
+            'expectedCount' => (int) $submission->getCurrentPublication()->getData('contributorUserSyncExpectedCount'),
+        ]);
     }
 
     /**

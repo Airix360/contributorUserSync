@@ -90,6 +90,14 @@
 		{/fbvFormSection}
 	{/fbvFormArea}
 
+	{* ------------------------------------------ Contributor notifications *}
+	{fbvFormArea id="cusNotify" title="plugins.generic.contributorUserSync.settings.notify"}
+		{fbvFormSection list=true description="plugins.generic.contributorUserSync.settings.notify.desc"}
+			{fbvElement type="checkbox" id="notifyAddedContributors" value="1" checked=$notifyAddedContributors label="plugins.generic.contributorUserSync.settings.notifyAddedContributors"}
+			{fbvElement type="checkbox" id="requireContributorCount" value="1" checked=$requireContributorCount label="plugins.generic.contributorUserSync.settings.requireContributorCount"}
+		{/fbvFormSection}
+	{/fbvFormArea}
+
 	{fbvFormButtons submitText="common.save"}
 </form>
 

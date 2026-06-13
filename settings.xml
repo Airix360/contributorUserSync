@@ -58,4 +58,14 @@
 		<name>createUserRole</name>
 		<value>author</value>
 	</setting>
+
+	<!-- Contributor notifications / wizard -->
+	<setting type="bool">
+		<name>notifyAddedContributors</name>
+		<value>false</value>
+	</setting>
+	<setting type="bool">
+		<name>requireContributorCount</name>
+		<value>false</value>
+	</setting>
 </plugin_settings>

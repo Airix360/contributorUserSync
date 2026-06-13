@@ -123,8 +123,40 @@
 
 	function loadStatuses(panel, subId) {
 		post({verb: 'statuses', submissionId: subId}).then(function (res) {
-			renderBadges(panel, res.content || {});
-		}).catch(function () { /* badges are best-effort */ });
+			var data = res.content || {};
+			renderBadges(panel, data.authors || {});
+			if (cfg.requireCount) {
+				renderCountInput(panel, subId, data.expectedCount || 0);
+			}
+		}).catch(function () { /* best-effort */ });
+	}
+
+	function renderCountInput(panel, subId, current) {
+		if (panel.querySelector('.cusCountWrap')) {
+			var existing = panel.querySelector('.cusCountInput');
+			if (existing && document.activeElement !== existing && String(current) !== existing.value) {
+				existing.value = current || '';
+			}
+			return;
+		}
+		var wrap = document.createElement('div');
+		wrap.className = 'cusCountWrap';
+		wrap.style.cssText = 'padding:0.5rem 0;display:flex;align-items:center;gap:0.5rem;';
+		var label = document.createElement('label');
+		label.textContent = cfg.i18n.countLabel;
+		label.style.fontWeight = '700';
+		var input = document.createElement('input');
+		input.type = 'number';
+		input.min = '0';
+		input.className = 'cusCountInput';
+		input.style.cssText = 'width:5rem;padding:0.25rem;';
+		input.value = current || '';
+		input.addEventListener('change', function () {
+			post({verb: 'setCount', submissionId: subId, count: input.value}).catch(function () {});
+		});
+		wrap.appendChild(label);
+		wrap.appendChild(input);
+		panel.insertBefore(wrap, panel.firstChild);
 	}
 
 	function decorate() {

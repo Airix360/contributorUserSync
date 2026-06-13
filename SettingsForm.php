@@ -31,6 +31,8 @@ class SettingsForm extends Form
         'updateContributorFromUser' => 'bool',
         'updateUserFromContributor' => 'bool',
         'createUserRole' => 'string',
+        'notifyAddedContributors' => 'bool',
+        'requireContributorCount' => 'bool',
     ];
 
     public function __construct(private ContributorUserSyncPlugin $plugin, private int $contextId)
