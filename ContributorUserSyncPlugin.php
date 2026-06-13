@@ -158,17 +158,15 @@ class ContributorUserSyncPlugin extends GenericPlugin
      *
      * @param array $args [&$page, &$op, &$sourceFile, &$handler]
      */
-    public function onLoadHandler(string $hookName, array $args): int
+    public function onLoadHandler(string $hookName, array $args)
     {
         $page = $args[0];
         $op = $args[1];
-        if ($page !== 'contributorApproval') {
+        if ($page !== 'contributorApproval' || !in_array($op, ['confirm', 'decline'], true)) {
             return Hook::CONTINUE;
         }
-        if (!in_array($op, ['confirm', 'decline'], true)) {
-            return Hook::CONTINUE;
-        }
-        $args[3] = new ContributorApprovalHandler($this);
+        $handler = &$args[3];
+        $handler = new ContributorApprovalHandler($this);
         return true;
     }
 
