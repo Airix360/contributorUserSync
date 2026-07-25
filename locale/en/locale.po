@@ -89,7 +89,10 @@ msgid "plugins.generic.contributorUserSync.settings.new"
 msgstr "New users"
 
 msgid "plugins.generic.contributorUserSync.settings.new.desc"
-msgstr "Newly created or invited accounts are always given the Author role only. Editor and Reviewer roles are never assigned automatically."
+msgstr "Newly created or invited accounts always get the Author role. Editor, Journal Manager, and Site Admin roles are never assigned automatically — there is no setting that grants them."
+
+msgid "plugins.generic.contributorUserSync.settings.createUserAllowReviewer"
+msgstr "Also grant the Reviewer role to newly created/invited accounts (in addition to Author)"
 
 # --- Settings: Bulk sync
 msgid "plugins.generic.contributorUserSync.settings.bulk"

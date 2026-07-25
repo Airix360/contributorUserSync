@@ -330,9 +330,11 @@ class ContributorSyncService
             if (!$groupId) {
                 throw new \Exception('no_author_user_group');
             }
+            $alsoAssignReviewer = !empty($this->settings['createUserAllowReviewer']);
             if (InvitationService::isSupported()) {
-                (new InvitationService($this->context))->inviteContributor($author, $groupId);
-            } elseif (!$newUserService->createForContributor($author, true)) {
+                $reviewerGroupId = $alsoAssignReviewer ? $newUserService->resolveReviewerUserGroupId() : null;
+                (new InvitationService($this->context))->inviteContributor($author, $groupId, $reviewerGroupId);
+            } elseif (!$newUserService->createForContributor($author, true, $alsoAssignReviewer)) {
                 throw new \Exception('no_author_user_group');
             }
             $suppression?->markInvited($email);
@@ -350,7 +352,8 @@ class ContributorSyncService
      */
     private function createMissingUser(Author $author, SyncReport $report): ?User
     {
-        $user = (new NewUserService($this->context))->createForContributor($author, false);
+        $alsoAssignReviewer = !empty($this->settings['createUserAllowReviewer']);
+        $user = (new NewUserService($this->context))->createForContributor($author, false, $alsoAssignReviewer);
         if (!$user) {
             $report->record(SyncReport::ERROR, 'no_author_user_group');
             return null;

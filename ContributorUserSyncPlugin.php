@@ -366,6 +366,10 @@ class ContributorUserSyncPlugin extends GenericPlugin
             'updateUserFromContributor' => (bool) $get('updateUserFromContributor', false),
             'notifyAddedContributors' => (bool) $get('notifyAddedContributors', false),
             'requireContributorCount' => (bool) $get('requireContributorCount', false),
+            // Auto-created/invited accounts always get Author. This opt-in
+            // (off by default) additionally grants Reviewer — the only other
+            // role ever assignable here. See NewUserService::ALLOWED_EXTRA_ROLE_IDS.
+            'createUserAllowReviewer' => (bool) $get('createUserAllowReviewer', false),
             'eligibleRoles' => (array) ($this->getSetting($contextId, 'eligibleRoles') ?? []),
         ];
     }

@@ -47,6 +47,7 @@ journal-wide bulk tool.
 | 🆔 | **Verified ORCID auto-sync** | Copies a *verified* ORCID iD (with its OAuth proof) from the matched user into the contributor, so they read as verified and are never re-prompted. |
 | 🎛️ | **Four sync modes** | Do nothing · link existing users only · invite missing contributors · auto-create accounts. |
 | 🧑‍🤝‍🧑 | **Role filtering** | Choose which contributor (author) roles are eligible for syncing. |
+| 🎚️ | **Configurable created-user role** | Auto-created/invited accounts always get Author; a manager can opt in to also grant Reviewer, from a fixed allow-list. Editor/Manager/Admin are never assignable. |
 | 🖱️ | **Per-contributor actions** | **Sync** and **Invite** buttons on every contributor row, plus a panel-level **Sync Contributors**, with persistent status badges. |
 | 📨 | **Real email invitations** | Missing contributors get an OJS invitation with an acceptance link and create their own account (Author role only — no emailed passwords). |
 | 🔔 | **"You were added" notifications** | Optionally email contributors when added to a submission, with a **decline** link that removes them. |
@@ -128,7 +129,9 @@ Open the plugin's **Settings**. Sections:
 - **Contributor roles** — which roles are eligible.
 - **Existing users** — fill empty contributor names/affiliation from the profile; push names
   to the profile (off).
-- **New users** — Author role only.
+- **New users** — auto-created/invited accounts always get Author; optionally also grant
+  Reviewer (off by default). Editor, Journal Manager, and Site Admin are never assignable —
+  there is no setting that grants them, and no code path resolves those groups.
 - **Contributor notifications** — notify on add (with decline); require a contributor count.
 - **Bulk sync** — preview / run / export.
 
@@ -145,7 +148,7 @@ Open the plugin's **Settings**. Sections:
 | Push contributor name to user profile | Off |
 | Notify added contributors | Off |
 | Require contributor count | Off |
-| Created-user role | Author only |
+| Grant Reviewer to created users | Off (Author only) |
 
 Start with the defaults, run a **Bulk sync preview** to see what *would* change, then apply.
 
@@ -175,10 +178,16 @@ Start with the defaults, run a **Bulk sync preview** to see what *would* change,
 
 - Never overwrites an existing contributor ORCID unless explicitly enabled.
 - Never treats an unverified/manual ORCID as verified.
-- Never creates Editor or Reviewer accounts — only the Author role.
+- Never creates Editor, Journal Manager, or Site Admin accounts — auto-created/invited
+  accounts always get Author, and a manager may separately opt in to also grant Reviewer.
+  Those two roles are the only ones this plugin's account-creation code can ever resolve or
+  assign, regardless of settings.
 - Avoids emailing generated passwords; uses invitation / activation workflows.
 - Never writes passwords or tokens to reports or logs.
 - All manager actions are CSRF-protected.
+- Refuses to auto-create or invite an account for a contributor whose email address is not a
+  syntactically valid email — malformed contributor-entered addresses never reach account
+  creation.
 
 ---
 

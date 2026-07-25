@@ -229,23 +229,101 @@ ok(
     'the generated (random) password is never embedded in the outgoing email'
 );
 
-// ── 7 (Code quality): dead createUserRole field + unused constant removed
+// ── 7 (Code quality): dead createUserRole field removed, unused constant removed
 
 echo "\n[7. Code quality — dead settings field and unused constant removed]\n";
 
-ok(strpos($plugin, 'createUserRole') === false, 'createUserRole removed from ContributorUserSyncPlugin::resolveSettings()');
-ok(strpos($settingsForm, 'createUserRole') === false, 'createUserRole removed from SettingsForm::SCALAR_SETTINGS');
+ok(strpos($plugin, "'createUserRole'") === false, 'the dead createUserRole key removed from ContributorUserSyncPlugin::resolveSettings()');
+ok(strpos($settingsForm, "'createUserRole' =>") === false, 'createUserRole removed from SettingsForm::SCALAR_SETTINGS');
 ok(strpos($settingsTpl, 'id="createUserRole"') === false, 'the disabled createUserRole field removed from settingsForm.tpl');
-ok(strpos($settingsXml, 'createUserRole') === false, 'createUserRole removed from settings.xml defaults');
+ok(strpos($settingsXml, '<name>createUserRole</name>') === false, 'createUserRole removed from settings.xml defaults');
 ok(
     strpos($syncReport, 'ORCID_SKIPPED_UNVERIFIED') === false,
     'unused SyncReport::ORCID_SKIPPED_UNVERIFIED constant removed'
 );
-// The role-resolution logic (NewUserService) must still hard-code Author-only,
-// confirming removal (not wiring-up) was the correct call for security.
+// Author is still the mandatory baseline for every auto-created/invited account.
 ok(
     strpos($newUserService, 'Role::ROLE_ID_AUTHOR') !== false,
-    'account role resolution remains hard-coded to Author — never made configurable'
+    'Author remains the unconditional baseline role for created/invited accounts'
+);
+
+// ── 8 (Feature): safe, manager-configurable created-user role (Reviewer opt-in)
+//
+// createUserRole was dead on arrival (introduced in the MVP commit, never read
+// by role-resolution logic) and was removed rather than wired up, because
+// wiring an *arbitrary* stored string straight into role assignment would
+// have let a plugin setting escalate a submission-wizard-triggered account to
+// any role, including Journal Manager/Site Admin. This section replaces it
+// with a real, narrowly-scoped feature: a boolean opt-in (not a free-form
+// role picker) that can only ever add Reviewer on top of the mandatory
+// Author role.
+
+echo "\n[8. Feature — safe manager-configurable created-user role]\n";
+
+ok(
+    (bool) preg_match('/ALLOWED_EXTRA_ROLE_IDS\s*=\s*\[Role::ROLE_ID_REVIEWER\]/', $newUserService),
+    'NewUserService declares a closed allow-list of extra roles containing only Reviewer'
+);
+ok(
+    strpos($newUserService, 'ROLE_ID_MANAGER') === false
+    && strpos($newUserService, 'ROLE_ID_SITE_ADMIN') === false
+    && strpos($newUserService, 'ROLE_ID_SUB_EDITOR') === false,
+    'NewUserService never references Manager/Site Admin/Sub Editor role constants — nothing above Reviewer is reachable in code'
+);
+ok(
+    strpos($newUserService, 'function createForContributor(Author $author, bool $invite, bool $alsoAssignReviewer = false)') !== false,
+    'createForContributor() takes a plain boolean Reviewer opt-in, not an arbitrary role id/string'
+);
+ok(
+    strpos($newUserService, 'function resolveReviewerUserGroupId(') !== false,
+    'NewUserService can resolve a Reviewer user group, independently of the Author group resolver'
+);
+ok(
+    (bool) preg_match('/assignUserToGroup\(\(int\) \$user->getId\(\), \$authorGroupId\);\s*\n\s*if \(\$reviewerGroupId\)/', $newUserService),
+    'Author is assigned unconditionally; Reviewer is only assigned when a group id was actually resolved'
+);
+ok(
+    strpos($settingsForm, "'createUserAllowReviewer' => 'bool'") !== false,
+    'createUserAllowReviewer is persisted as a plain bool via SettingsForm — the client can only ever POST true/false, never a role id'
+);
+ok(
+    strpos($plugin, "'createUserAllowReviewer' => (bool) \$get('createUserAllowReviewer', false)") !== false,
+    'the setting defaults to false (Author-only) when unset'
+);
+ok(
+    strpos($settingsXml, '<name>createUserAllowReviewer</name>') !== false,
+    'createUserAllowReviewer ships with a safe (false) default in settings.xml'
+);
+ok(
+    strpos($settingsTpl, 'id="createUserAllowReviewer"') !== false,
+    'the Reviewer opt-in checkbox is exposed in the settings template'
+);
+ok(
+    strpos($syncService, "empty(\$this->settings['createUserAllowReviewer'])") !== false,
+    'ContributorSyncService reads the opt-in and threads it through both the create-mode and invite-mode paths'
+);
+$invitationService = src('classes/InvitationService.php');
+ok(
+    strpos($invitationService, 'function inviteContributor(Author $author, int $userGroupId, ?int $reviewerGroupId = null)') !== false,
+    'InvitationService accepts an optional, pre-resolved Reviewer group id rather than a role name/string'
+);
+ok(
+    strpos($invitationService, 'ROLE_ID_MANAGER') === false
+    && strpos($invitationService, 'ROLE_ID_SITE_ADMIN') === false,
+    'InvitationService never references Manager/Site Admin role constants'
+);
+
+// ── 9 (Enhancement): reject malformed contributor emails before account creation
+
+echo "\n[9. Enhancement — email validation before auto-creating/inviting an account]\n";
+
+ok(
+    strpos($newUserService, 'FILTER_VALIDATE_EMAIL') !== false,
+    'NewUserService validates the contributor email format before creating an account'
+);
+ok(
+    (bool) preg_match('/filter_var\(\$email, FILTER_VALIDATE_EMAIL\) === false\)\s*\{\s*\n\s*return null;/', $newUserService),
+    'an invalid email causes createForContributor() to bail out with null rather than creating a broken account'
 );
 
 // ── Summary ───────────────────────────────────────────────────────────────────

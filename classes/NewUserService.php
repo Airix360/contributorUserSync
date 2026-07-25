@@ -10,8 +10,11 @@
  *
  * @brief Creates or invites OJS user accounts for contributors that have no
  *   matching user. Safety rules (see README):
- *     - Accounts are ONLY ever given the Author role. Editor/Reviewer are never
- *       assigned here.
+ *     - Accounts always get the Author role. A journal manager may additionally
+ *       opt in (via the plugin's "New users" setting) to also grant Reviewer —
+ *       the only other role this class will ever assign. Editor, Journal
+ *       Manager, and Site Admin roles are never assignable here; there is no
+ *       code path that resolves or assigns them, regardless of settings.
  *     - No generated password is emailed. "create" makes an enabled account with
  *       a random password the contributor must reset; "invite" makes a disabled
  *       account awaiting setup so onboarding goes through the activation flow.
@@ -32,6 +35,15 @@ use PKP\user\User;
 
 class NewUserService
 {
+    /**
+     * The only roles this service is ever allowed to assign to an
+     * auto-created/invited contributor account, beyond the always-included
+     * Author role. This is a closed allow-list, not user input: nothing in
+     * this class resolves or assigns Editor, Journal Manager, or Site Admin
+     * groups, no matter what a caller passes in.
+     */
+    public const ALLOWED_EXTRA_ROLE_IDS = [Role::ROLE_ID_REVIEWER];
+
     public function __construct(private Context $context)
     {
     }
@@ -51,19 +63,29 @@ class NewUserService
      *
      * @param bool $invite When true the account is created disabled, pending an
      *   activation/setup step rather than an emailed password.
+     * @param bool $alsoAssignReviewer When true (manager opt-in via settings),
+     *   the account is also given the Reviewer role in this context, in
+     *   addition to the always-assigned Author role. This is the only role
+     *   this method will ever add beyond Author.
      *
      * @return User|null The new (or, if a race was resolved, existing) user, or
-     *   null if no Author user group exists.
+     *   null if no Author user group exists (email format is also validated
+     *   here — a syntactically invalid email is never used to create an
+     *   account).
      */
-    public function createForContributor(Author $author, bool $invite): ?User
+    public function createForContributor(Author $author, bool $invite, bool $alsoAssignReviewer = false): ?User
     {
         $authorGroupId = $this->resolveAuthorUserGroupId($author);
         if (!$authorGroupId) {
             return null;
         }
         $email = trim((string) $author->getEmail());
+        if ($email === '' || filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
+            return null;
+        }
+        $reviewerGroupId = $alsoAssignReviewer ? $this->resolveReviewerUserGroupId() : null;
 
-        return DB::transaction(function () use ($author, $invite, $authorGroupId, $email) {
+        return DB::transaction(function () use ($author, $invite, $authorGroupId, $reviewerGroupId, $email) {
             // Re-check inside the transaction to narrow the race window before
             // committing to an insert.
             $existing = Repo::user()->getByEmail($email, true);
@@ -71,7 +93,7 @@ class NewUserService
                 return $existing;
             }
             try {
-                return $this->insertUser($author, $invite, $authorGroupId);
+                return $this->insertUser($author, $invite, $authorGroupId, $reviewerGroupId);
             } catch (\Throwable $e) {
                 // A concurrent request most likely won the race (e.g. a
                 // unique-username collision from two syncs building the same
@@ -87,11 +109,12 @@ class NewUserService
     }
 
     /**
-     * Insert the new user row, assign the Author role, and (for 'create' mode,
-     * i.e. not $invite) email the contributor a set-password link. Never emails
-     * the generated password itself.
+     * Insert the new user row, assign the Author role (plus Reviewer if
+     * $reviewerGroupId was resolved), and (for 'create' mode, i.e. not
+     * $invite) email the contributor a set-password link. Never emails the
+     * generated password itself.
      */
-    private function insertUser(Author $author, bool $invite, int $authorGroupId): User
+    private function insertUser(Author $author, bool $invite, int $authorGroupId, ?int $reviewerGroupId = null): User
     {
         $primaryLocale = $this->context->getPrimaryLocale();
         $user = Repo::user()->newDataObject();
@@ -113,8 +136,13 @@ class NewUserService
 
         Repo::user()->add($user);
 
-        // Author role only — never Editor/Reviewer.
+        // Always assign Author. Reviewer is the only additional role this
+        // class ever assigns, and only when the manager opted in and a
+        // Reviewer group was resolved — never Editor/Manager/Admin.
         Repo::userGroup()->assignUserToGroup((int) $user->getId(), $authorGroupId);
+        if ($reviewerGroupId) {
+            Repo::userGroup()->assignUserToGroup((int) $user->getId(), $reviewerGroupId);
+        }
 
         if (!$invite) {
             // 'create' mode makes an immediately-enabled account; let the
@@ -188,6 +216,21 @@ class NewUserService
         }
         $contributorGroupId = (int) $author->getUserGroupId();
         return in_array($contributorGroupId, $ids, true) ? $contributorGroupId : $ids[0];
+    }
+
+    /**
+     * The first Reviewer-role user group in this context, or null if none
+     * exists (e.g. a minimal setup with no reviewer groups configured). This
+     * is the only role-lookup in this class that can resolve anything other
+     * than Author — it is only ever called when a manager has explicitly
+     * opted in via settings.
+     */
+    public function resolveReviewerUserGroupId(): ?int
+    {
+        foreach (Repo::userGroup()->getByRoleIds([Role::ROLE_ID_REVIEWER], $this->context->getId()) as $group) {
+            return (int) $group->id;
+        }
+        return null;
     }
 
     /**

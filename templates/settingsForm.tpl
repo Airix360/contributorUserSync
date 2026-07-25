@@ -85,7 +85,8 @@
 
 	{* -------------------------------------------------------- New users *}
 	{fbvFormArea id="cusNew" title="plugins.generic.contributorUserSync.settings.new"}
-		{fbvFormSection description="plugins.generic.contributorUserSync.settings.new.desc"}
+		{fbvFormSection list=true description="plugins.generic.contributorUserSync.settings.new.desc"}
+			{fbvElement type="checkbox" id="createUserAllowReviewer" value="1" checked=$createUserAllowReviewer label="plugins.generic.contributorUserSync.settings.createUserAllowReviewer"}
 		{/fbvFormSection}
 	{/fbvFormArea}
 

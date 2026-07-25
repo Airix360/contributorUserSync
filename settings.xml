@@ -62,4 +62,10 @@
 		<name>requireContributorCount</name>
 		<value>false</value>
 	</setting>
+
+	<!-- New users: always Author; manager opt-in also grants Reviewer only -->
+	<setting type="bool">
+		<name>createUserAllowReviewer</name>
+		<value>false</value>
+	</setting>
 </plugin_settings>

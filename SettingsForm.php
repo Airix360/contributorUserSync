@@ -32,6 +32,7 @@ class SettingsForm extends Form
         'updateUserFromContributor' => 'bool',
         'notifyAddedContributors' => 'bool',
         'requireContributorCount' => 'bool',
+        'createUserAllowReviewer' => 'bool',
     ];
 
     public function __construct(private ContributorUserSyncPlugin $plugin, private int $contextId)
