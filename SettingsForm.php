@@ -30,7 +30,6 @@ class SettingsForm extends Form
         'orcidNoVerifiedAction' => 'string',
         'updateContributorFromUser' => 'bool',
         'updateUserFromContributor' => 'bool',
-        'createUserRole' => 'string',
         'notifyAddedContributors' => 'bool',
         'requireContributorCount' => 'bool',
     ];

@@ -19,7 +19,10 @@
 
 namespace APP\plugins\generic\contributorUserSync\classes;
 
+use APP\core\Application;
 use APP\facades\Repo;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use PKP\author\Author;
 use PKP\context\Context;
 use PKP\core\Core;
@@ -36,10 +39,21 @@ class NewUserService
     /**
      * Create (or invite) a user account for a contributor.
      *
+     * Check-then-create races: two concurrent syncs for the same email could
+     * otherwise both pass the "does this email already have a user?" check and
+     * each create an account. OJS does not enforce a DB-level unique constraint
+     * on email (only username), so a transaction alone can't fully close the
+     * window; instead we re-check for an existing user inside the transaction
+     * (narrowing it) and, if the insert itself still collides with a concurrent
+     * insert (surfacing as a unique-username violation or similar DB error), we
+     * catch it and fall back to a lookup rather than creating a duplicate
+     * account or letting a fatal error escape.
+     *
      * @param bool $invite When true the account is created disabled, pending an
      *   activation/setup step rather than an emailed password.
      *
-     * @return User|null The new user, or null if no Author user group exists.
+     * @return User|null The new (or, if a race was resolved, existing) user, or
+     *   null if no Author user group exists.
      */
     public function createForContributor(Author $author, bool $invite): ?User
     {
@@ -47,7 +61,38 @@ class NewUserService
         if (!$authorGroupId) {
             return null;
         }
+        $email = trim((string) $author->getEmail());
 
+        return DB::transaction(function () use ($author, $invite, $authorGroupId, $email) {
+            // Re-check inside the transaction to narrow the race window before
+            // committing to an insert.
+            $existing = Repo::user()->getByEmail($email, true);
+            if ($existing) {
+                return $existing;
+            }
+            try {
+                return $this->insertUser($author, $invite, $authorGroupId);
+            } catch (\Throwable $e) {
+                // A concurrent request most likely won the race (e.g. a
+                // unique-username collision from two syncs building the same
+                // candidate username at once). Fall back to a lookup instead of
+                // creating a duplicate account or bubbling a fatal error.
+                $existing = Repo::user()->getByEmail($email, true);
+                if ($existing) {
+                    return $existing;
+                }
+                throw $e;
+            }
+        });
+    }
+
+    /**
+     * Insert the new user row, assign the Author role, and (for 'create' mode,
+     * i.e. not $invite) email the contributor a set-password link. Never emails
+     * the generated password itself.
+     */
+    private function insertUser(Author $author, bool $invite, int $authorGroupId): User
+    {
         $primaryLocale = $this->context->getPrimaryLocale();
         $user = Repo::user()->newDataObject();
         $user->setUsername($this->uniqueUsername($author->getEmail()));
@@ -71,7 +116,57 @@ class NewUserService
         // Author role only — never Editor/Reviewer.
         Repo::userGroup()->assignUserToGroup((int) $user->getId(), $authorGroupId);
 
+        if (!$invite) {
+            // 'create' mode makes an immediately-enabled account; let the
+            // contributor know it exists and how to set their own password.
+            $this->sendNewAccountEmail($user);
+        }
+
         return $user;
+    }
+
+    /**
+     * Email a freshly auto-created contributor with a password-reset/set-password
+     * link. Best-effort: a failure here must not fail account creation.
+     */
+    private function sendNewAccountEmail(User $user): void
+    {
+        try {
+            $request = Application::get()->getRequest();
+            $dispatcher = $request->getDispatcher();
+            $resetUrl = null;
+            if (class_exists('\PKP\security\Validation') && method_exists('\PKP\security\Validation', 'generatePasswordResetHash')) {
+                $hash = Validation::generatePasswordResetHash((int) $user->getId());
+                $resetUrl = $dispatcher->url(
+                    $request,
+                    Application::ROUTE_PAGE,
+                    $this->context->getPath(),
+                    'login',
+                    'resetPassword',
+                    $user->getUsername(),
+                    ['confirm' => $hash]
+                );
+            } else {
+                // Fallback: send them to the plain login/forgot-password page.
+                $resetUrl = $dispatcher->url($request, Application::ROUTE_PAGE, $this->context->getPath(), 'login');
+            }
+
+            $mailable = new NewAccountNotify();
+            $mailable->from($this->context->getData('contactEmail'), $this->context->getData('contactName'));
+            $mailable->recipients([$user]);
+            $mailable->subject(__('plugins.generic.contributorUserSync.user.newAccountMail.subject', [
+                'journal' => $this->context->getLocalizedName(),
+            ]));
+            $mailable->body(__('plugins.generic.contributorUserSync.user.newAccountMail.body', [
+                'name' => $user->getFullName(),
+                'username' => $user->getUsername(),
+                'journal' => $this->context->getLocalizedName(),
+                'resetUrl' => $resetUrl,
+            ]));
+            Mail::send($mailable);
+        } catch (\Throwable $e) {
+            error_log('contributorUserSync new-account email failed: ' . $e->getMessage());
+        }
     }
 
     /**

@@ -99,6 +99,16 @@ class ContributorUserSyncPlugin extends GenericPlugin
             'apiSummary' => false,
             'validation' => ['nullable'],
         ];
+        $schema->properties->{ContributorSyncService::SETTING_PENDING_USER_ID} = (object) [
+            'type' => 'integer',
+            'apiSummary' => false,
+            'validation' => ['nullable'],
+        ];
+        $schema->properties->{ContributorSyncService::SETTING_MATCH_KEY} = (object) [
+            'type' => 'string',
+            'apiSummary' => false,
+            'validation' => ['nullable'],
+        ];
         return Hook::CONTINUE;
     }
 
@@ -162,7 +172,7 @@ class ContributorUserSyncPlugin extends GenericPlugin
     {
         $page = $args[0];
         $op = $args[1];
-        if ($page !== 'contributorApproval' || !in_array($op, ['confirm', 'decline'], true)) {
+        if ($page !== 'contributorApproval' || !in_array($op, ['confirm', 'decline', 'confirmMatch', 'declineMatch'], true)) {
             return Hook::CONTINUE;
         }
         $handler = &$args[3];
@@ -235,7 +245,7 @@ class ContributorUserSyncPlugin extends GenericPlugin
         if (!$context) {
             return;
         }
-        $service = new ContributorSyncService($this->resolveSettings($context->getId()), $context);
+        $service = new ContributorSyncService($this->resolveSettings($context->getId()), $context, $this);
         if (!$service->isEnabled()) {
             return;
         }
@@ -354,7 +364,6 @@ class ContributorUserSyncPlugin extends GenericPlugin
             'orcidNoVerifiedAction' => $get('orcidNoVerifiedAction', 'nothing'),
             'updateContributorFromUser' => (bool) $get('updateContributorFromUser', false),
             'updateUserFromContributor' => (bool) $get('updateUserFromContributor', false),
-            'createUserRole' => $get('createUserRole', 'author'),
             'notifyAddedContributors' => (bool) $get('notifyAddedContributors', false),
             'requireContributorCount' => (bool) $get('requireContributorCount', false),
             'eligibleRoles' => (array) ($this->getSetting($contextId, 'eligibleRoles') ?? []),
@@ -447,7 +456,7 @@ class ContributorUserSyncPlugin extends GenericPlugin
     {
         $context = $request->getContext();
         $settings = $this->resolveSettings($context->getId());
-        $service = new ContributorSyncService($settings, $context);
+        $service = new ContributorSyncService($settings, $context, $this);
         $tool = new BulkSyncTool($service, $context);
         $report = $tool->run($apply, (int) ($request->getUserVar('limit') ?: 0));
 
@@ -555,7 +564,7 @@ class ContributorUserSyncPlugin extends GenericPlugin
                 ->getMany();
         }
 
-        $service = new ContributorSyncService($settings, $context);
+        $service = new ContributorSyncService($settings, $context, $this);
         $report = new SyncReport();
         $lines = [];
         foreach ($authors as $author) {

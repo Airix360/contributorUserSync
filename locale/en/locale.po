@@ -91,9 +91,6 @@ msgstr "New users"
 msgid "plugins.generic.contributorUserSync.settings.new.desc"
 msgstr "Newly created or invited accounts are always given the Author role only. Editor and Reviewer roles are never assigned automatically."
 
-msgid "plugins.generic.contributorUserSync.settings.createUserRole"
-msgstr "Default role for created users"
-
 # --- Settings: Bulk sync
 msgid "plugins.generic.contributorUserSync.settings.bulk"
 msgstr "Bulk sync"
@@ -172,9 +169,6 @@ msgstr "Contributor already had an ORCID; skipped overwrite"
 msgid "plugins.generic.contributorUserSync.outcome.orcidRequestSent"
 msgstr "ORCID verification request emailed to contributor"
 
-msgid "plugins.generic.contributorUserSync.outcome.orcidSkippedUnverified"
-msgstr "User ORCID was not verified; skipped"
-
 msgid "plugins.generic.contributorUserSync.outcome.userCreated"
 msgstr "New user account created"
 
@@ -195,6 +189,18 @@ msgstr "Skipped because the contributor role is not eligible"
 
 msgid "plugins.generic.contributorUserSync.outcome.error"
 msgstr "Error"
+
+msgid "plugins.generic.contributorUserSync.outcome.matchPendingConfirmation"
+msgstr "Matched an existing user; awaiting their confirmation before any data is merged"
+
+msgid "plugins.generic.contributorUserSync.outcome.skippedMatchDeclined"
+msgstr "The matched user declined the match; nothing was merged"
+
+msgid "plugins.generic.contributorUserSync.outcome.skippedDuplicateMatch"
+msgstr "Skipped — this user is already matched to another contributor on this submission"
+
+msgid "plugins.generic.contributorUserSync.outcome.linkCleared"
+msgstr "Previous user link cleared because the contributor's email changed"
 
 # --- Contributors-panel actions
 msgid "plugins.generic.contributorUserSync.action.sync"
@@ -254,6 +260,31 @@ msgstr "You have been removed from the contributor list for this submission."
 msgid "plugins.generic.contributorUserSync.approval.invalid"
 msgstr "This link is invalid or has already been used."
 
+msgid "plugins.generic.contributorUserSync.approval.matchConfirmed"
+msgstr "Thank you — your account is now linked to that submission's contributor entry, and your profile data (including ORCID) may be used there."
+
+msgid "plugins.generic.contributorUserSync.approval.matchDeclined"
+msgstr "Thanks for letting us know. Your account has not been linked, and no data was merged."
+
+# --- Match-confirmation email (existing-user email match)
+msgid "plugins.generic.contributorUserSync.matchNotify.name"
+msgstr "Contributor match confirmation"
+
+msgid "plugins.generic.contributorUserSync.matchNotify.description"
+msgstr "Sent to an existing user account whose email matched a contributor on someone else's submission, asking them to confirm before any data is merged."
+
+msgid "plugins.generic.contributorUserSync.matchNotify.subject"
+msgstr "Please confirm: were you added as a contributor to \"{$title}\"?"
+
+msgid "plugins.generic.contributorUserSync.matchNotify.body"
+msgstr ""
+"<p>Dear {$name},</p>"
+"<p>Your OJS account's email address matches a contributor listed on the submission <strong>\"{$title}\"</strong> in {$journal}. No information has been shared or changed yet.</p>"
+"<p>If this is your submission and you'd like your account (including any verified ORCID iD) linked to it, please confirm:</p>"
+"<p><a href=\"{$confirmUrl}\">Confirm — this is me</a></p>"
+"<p>If you do not recognise this submission, please decline and nothing further will happen:</p>"
+"<p><a href=\"{$declineUrl}\">Decline — this is not me</a></p>"
+
 # --- Wizard contributor-count gate
 msgid "plugins.generic.contributorUserSync.wizard.countMismatch"
 msgstr "You declared {$expected} contributor(s) but the submission has {$actual}. Please add or remove contributors so the numbers match before submitting."
@@ -264,3 +295,20 @@ msgstr "How many contributors will this submission have?"
 # --- New-user account state
 msgid "plugins.generic.contributorUserSync.user.awaitingSetup"
 msgstr "Account created by Contributor User Sync; awaiting activation by the contributor."
+
+# --- New-account email ('create' mode)
+msgid "plugins.generic.contributorUserSync.user.newAccountMail.name"
+msgstr "New contributor account created"
+
+msgid "plugins.generic.contributorUserSync.user.newAccountMail.description"
+msgstr "Sent to a contributor when 'create' mode auto-creates an OJS account for them, with a link to set their own password."
+
+msgid "plugins.generic.contributorUserSync.user.newAccountMail.subject"
+msgstr "An account was created for you at {$journal}"
+
+msgid "plugins.generic.contributorUserSync.user.newAccountMail.body"
+msgstr ""
+"<p>Dear {$name},</p>"
+"<p>Because you were listed as a contributor on a submission, an account was created for you at {$journal} (username: <strong>{$username}</strong>).</p>"
+"<p>For security, no password was set on your behalf. Please use the link below to set your own password before signing in:</p>"
+"<p><a href=\"{$resetUrl}\">Set my password</a></p>"

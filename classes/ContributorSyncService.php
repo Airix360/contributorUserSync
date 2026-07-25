@@ -22,6 +22,7 @@
 namespace APP\plugins\generic\contributorUserSync\classes;
 
 use APP\facades\Repo;
+use APP\plugins\generic\contributorUserSync\ContributorUserSyncPlugin;
 use PKP\author\Author;
 use PKP\context\Context;
 use PKP\user\User;
@@ -38,9 +39,28 @@ class ContributorSyncService
     public const SETTING_STATUS_AT = 'contributorUserSyncStatusAt';
 
     /**
-     * @param array $settings Resolved plugin settings (see ContributorUserSyncPlugin::resolveSettings()).
+     * A user matched by email that pre-dates this sync run (i.e. not an account
+     * this plugin just created) is only a *candidate* until that user confirms
+     * the match via the emailed confirm/decline link. Until confirmed, this
+     * holds the candidate user id and SETTING_USER_ID is left untouched — no
+     * ORCID or profile data is merged, and nothing is attached to the
+     * submission. See ContributorApprovalHandler::confirmMatch()/declineMatch().
      */
-    public function __construct(private array $settings, private Context $context)
+    public const SETTING_PENDING_USER_ID = 'contributorUserSyncPendingUserId';
+
+    /** Approval key for the pending-match confirm/decline link (separate from
+     *  NotificationService::SETTING_APPROVAL_KEY, which guards an unrelated
+     *  "you were added as a contributor" flow). */
+    public const SETTING_MATCH_KEY = 'contributorUserSyncMatchKey';
+
+    /**
+     * @param array $settings Resolved plugin settings (see ContributorUserSyncPlugin::resolveSettings()).
+     * @param ContributorUserSyncPlugin|null $plugin Needed to persist cross-submission
+     *   state (per-email invite suppression). Optional only so lightweight/manual
+     *   callers can omit it; when omitted, invite suppression falls back to the
+     *   per-contributor status stamp (its old, per-submission-only behaviour).
+     */
+    public function __construct(private array $settings, private Context $context, private ?ContributorUserSyncPlugin $plugin = null)
     {
     }
 
@@ -62,21 +82,28 @@ class ContributorSyncService
         $changed = false;
 
         try {
+            // A contributor's email may have been corrected since a previous
+            // sync linked (or proposed linking) them to a user. If that link no
+            // longer matches the current email, it's stale — clear it rather
+            // than leaving the author row pointing at an unrelated account.
+            $changed = $this->reconcileStaleLink($author, $email, $report, $apply) || $changed;
+
             if (!$this->isRoleEligible($author)) {
                 $report->record(SyncReport::SKIPPED_INELIGIBLE_ROLE);
-                return $this->finish($author, $submissionId, $name, $email, $report, $apply, false);
+                return $this->finish($author, $submissionId, $name, $email, $report, $apply, $changed);
             }
 
             if ($email === '') {
                 $report->record(SyncReport::SKIPPED_NO_EMAIL);
-                return $this->finish($author, $submissionId, $name, $email, $report, $apply, false);
+                return $this->finish($author, $submissionId, $name, $email, $report, $apply, $changed);
             }
 
             $user = Repo::user()->getByEmail($email, true);
+            $isPreexistingAccount = (bool) $user;
             if (!$user) {
                 $mode = $this->settings['syncMode'] ?? 'link';
                 if ($mode === 'invite' && $apply) {
-                    $changed = $this->inviteContributor($author, $report);
+                    $changed = $this->inviteContributor($author, $report) || $changed;
                     // No account exists until the invitation is accepted, so
                     // there is nothing to link yet.
                     return $this->finish($author, $submissionId, $name, $email, $report, $apply, $changed);
@@ -89,10 +116,36 @@ class ContributorSyncService
                     $report->record(SyncReport::SKIPPED_NO_USER);
                     return $this->finish($author, $submissionId, $name, $email, $report, $apply, $changed);
                 }
+                // Freshly created by this very call — no independent owner
+                // exists yet to confirm, so no confirmation gate applies.
+                $isPreexistingAccount = false;
                 $changed = true;
             }
 
-            // --- Link contributor to the matched user ------------------------
+            // --- Same-submission duplicate-match guard ------------------------
+            // Never let two different contributor rows on the same submission
+            // resolve (or be proposed to resolve) to the same user — that would
+            // let one verified ORCID / profile attach to multiple co-author rows.
+            if ($this->userAlreadyLinkedToSibling($author, $user)) {
+                $report->record(SyncReport::SKIPPED_DUPLICATE_MATCH, $user->getUsername());
+                return $this->finish($author, $submissionId, $name, $email, $report, $apply, $changed);
+            }
+
+            // --- Confirmation gate for pre-existing accounts ------------------
+            // A bare email match is not sufficient to write ORCID/profile data
+            // into someone else's account or the submission: the matched user
+            // must explicitly confirm via the emailed confirm/decline link
+            // before anything below this point runs for them.
+            if ($isPreexistingAccount) {
+                $linkedUserId = (int) $author->getData(self::SETTING_USER_ID);
+                if ($linkedUserId !== (int) $user->getId()) {
+                    $changed = $this->requestOrAwaitMatchConfirmation($author, $user, $submissionId, $report, $apply) || $changed;
+                    return $this->finish($author, $submissionId, $name, $email, $report, $apply, $changed);
+                }
+            }
+
+            // --- Link contributor to the matched (and, if applicable, confirmed)
+            // user --------------------------------------------------------------
             $report->record(SyncReport::MATCHED_USER, $user->getUsername());
             if ((int) $author->getData(self::SETTING_USER_ID) !== (int) $user->getId()) {
                 $report->record(SyncReport::LINKED);
@@ -127,14 +180,146 @@ class ContributorSyncService
     }
 
     /**
+     * Clear a previously-linked (or pending) user match if it no longer
+     * corresponds to the contributor's current email — e.g. the email was a
+     * typo that got corrected, or was reassigned to a different person. Returns
+     * true if the author was changed.
+     */
+    private function reconcileStaleLink(Author $author, string $email, SyncReport $report, bool $apply): bool
+    {
+        $changed = false;
+
+        $linkedId = (int) $author->getData(self::SETTING_USER_ID);
+        if ($linkedId) {
+            $linkedUser = Repo::user()->get($linkedId);
+            if (!$linkedUser || !$this->emailsMatch((string) $linkedUser->getEmail(), $email)) {
+                if ($apply) {
+                    $author->setData(self::SETTING_USER_ID, null);
+                }
+                $report->record(SyncReport::LINK_CLEARED, (string) $linkedId);
+                $changed = true;
+            }
+        }
+
+        $pendingId = (int) $author->getData(self::SETTING_PENDING_USER_ID);
+        if ($pendingId) {
+            $pendingUser = Repo::user()->get($pendingId);
+            if (!$pendingUser || !$this->emailsMatch((string) $pendingUser->getEmail(), $email)) {
+                if ($apply) {
+                    $author->setData(self::SETTING_PENDING_USER_ID, null);
+                    $author->setData(self::SETTING_MATCH_KEY, null);
+                }
+                $changed = true;
+            }
+        }
+
+        return $changed;
+    }
+
+    private function emailsMatch(string $a, string $b): bool
+    {
+        return $a !== '' && strcasecmp($a, $b) === 0;
+    }
+
+    /**
+     * Is $user already linked (confirmed) or awaiting confirmation on a
+     * *different* contributor row of the same submission? Prevents the same
+     * verified ORCID / profile from attaching to multiple co-author entries.
+     */
+    private function userAlreadyLinkedToSibling(Author $author, ?User $user): bool
+    {
+        if (!$user) {
+            return false;
+        }
+        $publicationId = (int) $author->getData('publicationId');
+        if (!$publicationId) {
+            return false;
+        }
+        $userId = (int) $user->getId();
+        $siblings = Repo::author()->getCollector()
+            ->filterByPublicationIds([$publicationId])
+            ->getMany();
+        foreach ($siblings as $sibling) {
+            if ((int) $sibling->getId() === (int) $author->getId()) {
+                continue;
+            }
+            if ((int) $sibling->getData(self::SETTING_USER_ID) === $userId
+                || (int) $sibling->getData(self::SETTING_PENDING_USER_ID) === $userId) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * A pre-existing user was matched by email but has not yet confirmed the
+     * match. Send (or note a still-pending) confirmation request; never link or
+     * merge data until the matched user has explicitly confirmed. Returns true
+     * if the author was changed.
+     */
+    private function requestOrAwaitMatchConfirmation(Author $author, User $user, int $submissionId, SyncReport $report, bool $apply): bool
+    {
+        $pendingUserId = (int) $author->getData(self::SETTING_PENDING_USER_ID);
+        $hasPendingKey = (bool) $author->getData(self::SETTING_MATCH_KEY);
+        $wasDeclinedByThisUser = $pendingUserId === (int) $user->getId()
+            && $author->getData(self::SETTING_STATUS) === SyncReport::SKIPPED_MATCH_DECLINED;
+
+        if ($wasDeclinedByThisUser && empty($this->settings['forceResend'])) {
+            // This exact user already declined; don't nag them on every save.
+            $report->record(SyncReport::SKIPPED_MATCH_DECLINED, $user->getUsername());
+            return false;
+        }
+
+        if ($pendingUserId === (int) $user->getId() && $hasPendingKey && empty($this->settings['forceResend'])) {
+            // Already asked this same user and awaiting a reply; don't re-send
+            // on every save.
+            $report->record(SyncReport::MATCH_PENDING_CONFIRMATION, $user->getUsername());
+            return false;
+        }
+
+        if (!$apply) {
+            $report->record(SyncReport::MATCH_PENDING_CONFIRMATION, $user->getUsername());
+            return false;
+        }
+
+        $submission = $submissionId ? Repo::submission()->get($submissionId) : null;
+        if (!$submission) {
+            $report->record(SyncReport::MATCH_PENDING_CONFIRMATION, $user->getUsername());
+            return false;
+        }
+
+        try {
+            $service = new NotificationService($this->context);
+            $key = $service->requestMatchConfirmation($author, $user, $submission, true);
+            if ($key) {
+                $author->setData(self::SETTING_PENDING_USER_ID, (int) $user->getId());
+                $author->setData(self::SETTING_MATCH_KEY, $key);
+                $report->record(SyncReport::MATCH_PENDING_CONFIRMATION, $user->getUsername());
+                return true;
+            }
+        } catch (\Throwable $e) {
+            $report->record(SyncReport::ERROR, $e->getMessage());
+        }
+        return false;
+    }
+
+    /**
      * Send an email invitation (OJS 3.5 invitation framework) to a contributor
      * with no account. On OJS 3.4 falls back to a disabled placeholder account.
-     * Re-invitations are suppressed in automatic mode (set settings[forceResend]
-     * for explicit manual resends). Returns true if the author was changed.
+     * Re-invitations are suppressed per-email (not just per-submission — the
+     * same person listed on two submissions should not get two invitations),
+     * with settings[forceResend] available for explicit manual resends. Returns
+     * true if the author was changed.
      */
     private function inviteContributor(Author $author, SyncReport $report): bool
     {
-        $alreadyInvited = $author->getData(self::SETTING_STATUS) === SyncReport::INVITATION_SENT;
+        $email = trim((string) $author->getEmail());
+        $suppression = $this->plugin ? new InvitationSuppressionService($this->plugin, $this->context->getId()) : null;
+        $alreadyInvited = $suppression
+            ? $suppression->isSuppressed($email)
+            // Fallback when no plugin reference is available: the old,
+            // per-submission-only check.
+            : $author->getData(self::SETTING_STATUS) === SyncReport::INVITATION_SENT;
         if ($alreadyInvited && empty($this->settings['forceResend'])) {
             $report->record(SyncReport::SKIPPED_NO_USER, 'invitation pending');
             return false;
@@ -150,6 +335,7 @@ class ContributorSyncService
             } elseif (!$newUserService->createForContributor($author, true)) {
                 throw new \Exception('no_author_user_group');
             }
+            $suppression?->markInvited($email);
             $report->record(SyncReport::INVITATION_SENT, $author->getEmail());
             return true; // persist the invitationSent status stamp
         } catch (\Throwable $e) {
