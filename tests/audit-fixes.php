@@ -326,6 +326,108 @@ ok(
     'an invalid email causes createForContributor() to bail out with null rather than creating a broken account'
 );
 
+// ── 10 (Feature): admin-facing "unlink this account" action
+//
+// Even with the confirmation gate (fix #1), a false-positive confirm or an
+// old pre-fix link can leave a contributor row incorrectly linked to a user
+// account, with no way to undo it short of a direct database edit. This adds
+// a manager/editor action that clears the link (and any related pending
+// match state) for a specific contributor row, without touching the user
+// account itself, and logs who did it and when.
+
+echo "\n[10. Feature — admin-facing unlink action]\n";
+
+$reportTpl = @file_get_contents("$root/js/contributorSync.js") ?: '';
+
+ok(
+    strpos($plugin, "case 'unlink':") !== false,
+    "ContributorUserSyncPlugin::manage() routes an 'unlink' verb"
+);
+ok(
+    (bool) preg_match("/case 'unlink':.*?checkCSRF\(\).*?manageUnlink\(/s", $plugin),
+    'the unlink verb is CSRF-checked (like the other data-mutating verbs) before manageUnlink() runs'
+);
+ok(
+    strpos($plugin, 'function manageUnlink(') !== false,
+    'ContributorUserSyncPlugin has a dedicated manageUnlink() handler'
+);
+// Must only clear the link-related settings, never delete/alter the user.
+ok(
+    (bool) preg_match('/function manageUnlink\(.*?SETTING_USER_ID, null\).*?SETTING_PENDING_USER_ID, null\).*?SETTING_MATCH_KEY, null\)/s', $plugin),
+    'manageUnlink() clears SETTING_USER_ID, SETTING_PENDING_USER_ID, and SETTING_MATCH_KEY'
+);
+preg_match('/private function manageUnlink\(.*?\n    \}\n/s', $plugin, $manageUnlinkMatch);
+$manageUnlinkBody = $manageUnlinkMatch[0] ?? '';
+ok(
+    $manageUnlinkBody !== '' && strpos($manageUnlinkBody, 'Repo::user()->edit(') === false,
+    'manageUnlink() never calls Repo::user()->edit() — the user account itself is never modified'
+);
+ok(
+    (bool) preg_match('/function manageUnlink\(.*?if \(!\$previousUserId\)\s*\{\s*\n\s*return new JSONMessage\(false/s', $plugin),
+    'manageUnlink() refuses (rather than silently no-ops) when the contributor is not actually linked'
+);
+// Auditability: who, when, which contributor/user.
+ok(
+    strpos($plugin, 'function logUnlink(') !== false,
+    'ContributorUserSyncPlugin has a dedicated logUnlink() audit-trail writer'
+);
+ok(
+    (bool) preg_match(
+        "/function logUnlink\(.*?'at' =>.*?'submissionId' =>.*?'contributorId' =>.*?'previousUserId' =>.*?'actorUserId' =>/s",
+        $plugin
+    ),
+    'the unlink audit entry records when, which submission/contributor, the previous linked user, and the acting user'
+);
+ok(
+    strpos($plugin, "manageUnlink(\$request);") !== false
+    && strpos($plugin, 'logUnlink($context->getId(), $request->getUser()') !== false,
+    'manageUnlink() calls logUnlink() with the actual requesting user, not a hardcoded value'
+);
+ok(
+    strpos($plugin, "self::UNLINKED_MANUAL") === false
+    && strpos($syncReport, "UNLINKED_MANUAL = 'unlinkedManual'") !== false,
+    'SyncReport defines a distinct UNLINKED_MANUAL outcome for the manual-unlink action'
+);
+ok(
+    strpos($plugin, 'SyncReport::UNLINKED_MANUAL') !== false,
+    'manageUnlink() stamps the contributor status with SyncReport::UNLINKED_MANUAL so the badge reflects the manual undo'
+);
+// Visibility: manageStatuses() must surface linked rows even without a status
+// stamp (an old pre-fix link may carry none), so the UI can show the button.
+ok(
+    (bool) preg_match('/\$linkedUserId = \(int\) \$author->getData\(ContributorSyncService::SETTING_USER_ID\);\s*\n\s*if \(!\$status && !\$linkedUserId\)/', $plugin),
+    'manageStatuses() reports a linked row even when no status stamp exists yet'
+);
+ok(
+    strpos($plugin, "\$entry['linkedUserId'] = \$linkedUserId;") !== false
+    && strpos($plugin, "\$entry['linkedUsername'] = \$linkedUser ?") !== false,
+    'manageStatuses() exposes the linked user id/username to the contributors-panel UI'
+);
+// Front-end: a confirmation step gates the actual request (not a casual toggle).
+ok(
+    strpos($reportTpl, "verb: 'unlink'") !== false,
+    'contributorSync.js posts the unlink verb'
+);
+ok(
+    strpos($reportTpl, 'window.confirm(cfg.i18n.unlinkConfirm)') !== false,
+    'the unlink button requires an explicit confirm() before posting — this is a meaningful undo action'
+);
+ok(
+    strpos($reportTpl, 'function renderUnlinkControl(') !== false,
+    'contributorSync.js only shows the Unlink control on rows currently linked to a user account'
+);
+// Locale coverage for the new strings.
+$localePo = src('locale/en/locale.po');
+foreach ([
+    'plugins.generic.contributorUserSync.action.unlink',
+    'plugins.generic.contributorUserSync.action.unlinkConfirm',
+    'plugins.generic.contributorUserSync.action.unlinked',
+    'plugins.generic.contributorUserSync.action.notLinked',
+    'plugins.generic.contributorUserSync.outcome.unlinkedManual',
+] as $key) {
+    ok(strpos($localePo, "msgid \"$key\"") !== false, "locale.po defines \"$key\"");
+}
+
 // ── Summary ───────────────────────────────────────────────────────────────────
 
 echo "\n" . str_repeat('─', 50) . "\n";

@@ -97,28 +97,89 @@
 			var authorId = item.getAttribute('data-cus-author-id');
 			var info = authorId && statuses ? statuses[authorId] : null;
 			var badge = item.querySelector('.cusStatusBadge');
-			if (!info) {
+			if (!info || !info.label) {
 				if (badge) {
 					badge.remove();
 				}
+			} else {
+				if (!badge) {
+					badge = document.createElement('span');
+					badge.className = 'cusStatusBadge';
+					badge.style.cssText = 'display:inline-block;margin-left:0.5rem;padding:0.125rem 0.5rem;' +
+						'border:1px solid #bbb;border-radius:1rem;font-size:0.75rem;color:#555;vertical-align:middle;';
+					var anchor = item.querySelector('.listPanel__itemTitle') || item.firstElementChild;
+					(anchor.parentElement || item).insertBefore(badge, anchor.nextSibling);
+				}
+				// Only touch the DOM on real changes, so the MutationObserver settles.
+				if (badge.textContent !== info.label) {
+					badge.textContent = info.label;
+				}
+				if (badge.title !== (info.at || '')) {
+					badge.title = info.at || '';
+				}
+			}
+			renderUnlinkControl(item, authorId, info);
+		});
+	}
+
+	// Admin-facing "unlink this account" action: shown only on rows currently
+	// linked to a user account (info.linkedUserId set), whether or not a
+	// status stamp exists — an old, pre-confirmation-gate link may have no
+	// status. Requires an explicit confirm() before posting, since this is a
+	// meaningful undo action, not a casual toggle. Never touches the user
+	// account itself; the server only clears the link on this contributor row.
+	function renderUnlinkControl(item, authorId, info) {
+		var tag = item.querySelector('.cusLinkedTag');
+		var unlinkBtn = item.querySelector('.cusUnlinkBtn');
+		if (!info || !info.linkedUserId) {
+			if (tag) {
+				tag.remove();
+			}
+			if (unlinkBtn) {
+				unlinkBtn.remove();
+			}
+			return;
+		}
+		if (!tag) {
+			tag = document.createElement('span');
+			tag.className = 'cusLinkedTag';
+			tag.style.cssText = 'display:inline-block;margin-left:0.5rem;font-size:0.75rem;color:#555;vertical-align:middle;';
+			var badge = item.querySelector('.cusStatusBadge');
+			var anchor = badge || item.querySelector('.listPanel__itemTitle') || item.firstElementChild;
+			(anchor.parentElement || item).insertBefore(tag, anchor.nextSibling);
+		}
+		var label = (cfg.i18n.linkedTo || 'Linked to') + ': ' + info.linkedUsername;
+		if (tag.textContent !== label) {
+			tag.textContent = label;
+		}
+		if (unlinkBtn) {
+			return; // already wired up for this row
+		}
+		var actions = item.querySelector('.listPanel__itemActions');
+		if (!actions) {
+			return;
+		}
+		var refBtn = actions.querySelector('button');
+		unlinkBtn = makeButton(cfg.i18n.unlink, 'cusUnlinkBtn', refBtn);
+		unlinkBtn.addEventListener('click', function () {
+			if (!window.confirm(cfg.i18n.unlinkConfirm)) {
 				return;
 			}
-			if (!badge) {
-				badge = document.createElement('span');
-				badge.className = 'cusStatusBadge';
-				badge.style.cssText = 'display:inline-block;margin-left:0.5rem;padding:0.125rem 0.5rem;' +
-					'border:1px solid #bbb;border-radius:1rem;font-size:0.75rem;color:#555;vertical-align:middle;';
-				var anchor = item.querySelector('.listPanel__itemTitle') || item.firstElementChild;
-				(anchor.parentElement || item).insertBefore(badge, anchor.nextSibling);
-			}
-			// Only touch the DOM on real changes, so the MutationObserver settles.
-			if (badge.textContent !== info.label) {
-				badge.textContent = info.label;
-			}
-			if (badge.title !== (info.at || '')) {
-				badge.title = info.at || '';
-			}
+			unlinkBtn.disabled = true;
+			post({verb: 'unlink', authorId: authorId}).then(function (res) {
+				showMessage(item, res.content || cfg.i18n.error, res.status);
+				var panel = item.closest('.listPanel') || item.closest('div[class*="listPanel"]');
+				var subId = getSubmissionId();
+				if (panel && subId) {
+					loadStatuses(panel, subId);
+				}
+			}).catch(function () {
+				showMessage(item, cfg.i18n.error, false);
+			}).finally(function () {
+				unlinkBtn.disabled = false;
+			});
 		});
+		actions.appendChild(unlinkBtn);
 	}
 
 	function loadStatuses(panel, subId) {

@@ -41,6 +41,12 @@ class SyncReport
     /** A previously-linked user no longer matches the contributor's (changed) email. */
     public const LINK_CLEARED = 'linkCleared';
 
+    // --- Added for the admin-facing manual "unlink this account" action -----
+    /** An editor/manager explicitly cleared a contributor's user link (see
+     *  ContributorUserSyncPlugin::manageUnlink()). Distinct from LINK_CLEARED,
+     *  which is an automatic reconciliation triggered by an email change. */
+    public const UNLINKED_MANUAL = 'unlinkedManual';
+
     /** @var int Distinct contributors scanned */
     public int $scanned = 0;
 

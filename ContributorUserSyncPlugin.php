@@ -331,6 +331,9 @@ class ContributorUserSyncPlugin extends GenericPlugin
                 'syncAll' => __('plugins.generic.contributorUserSync.action.syncAll'),
                 'error' => __('plugins.generic.contributorUserSync.action.error'),
                 'countLabel' => __('plugins.generic.contributorUserSync.wizard.countLabel'),
+                'unlink' => __('plugins.generic.contributorUserSync.action.unlink'),
+                'unlinkConfirm' => __('plugins.generic.contributorUserSync.action.unlinkConfirm'),
+                'linkedTo' => __('plugins.generic.contributorUserSync.action.linkedTo'),
             ],
         ];
         $templateMgr->addJavaScript(
@@ -426,6 +429,14 @@ class ContributorUserSyncPlugin extends GenericPlugin
                     return new JSONMessage(false, __('form.csrfInvalid'));
                 }
                 return $this->manageSyncAction($request, $verb);
+            case 'unlink':
+                // Same access path as syncOne/syncAll (this component route is
+                // manager-gated) plus CSRF: this is a meaningful undo action,
+                // not a casual toggle.
+                if (!$request->checkCSRF()) {
+                    return new JSONMessage(false, __('form.csrfInvalid'));
+                }
+                return $this->manageUnlink($request);
             case 'bulkExport':
                 $this->downloadLastReport($request);
                 // downloadLastReport emits the file and exits; this is unreachable.
@@ -496,7 +507,10 @@ class ContributorUserSyncPlugin extends GenericPlugin
 
     /**
      * Read-only: last sync status per contributor of a submission's current
-     * publication, for the persistent badges in the contributors panel.
+     * publication, for the persistent badges in the contributors panel. Also
+     * reports which rows are currently linked to a user account (regardless of
+     * whether a status stamp exists — an old, pre-fix link may carry no
+     * status) so the UI can offer the "Unlink" action.
      */
     private function manageStatuses($request): JSONMessage
     {
@@ -511,18 +525,105 @@ class ContributorUserSyncPlugin extends GenericPlugin
         $map = [];
         foreach ($authors as $author) {
             $status = $author->getData(ContributorSyncService::SETTING_STATUS);
-            if (!$status) {
+            $linkedUserId = (int) $author->getData(ContributorSyncService::SETTING_USER_ID);
+            if (!$status && !$linkedUserId) {
                 continue;
             }
-            $map[(int) $author->getId()] = [
-                'label' => __('plugins.generic.contributorUserSync.outcome.' . $status),
-                'at' => (string) $author->getData(ContributorSyncService::SETTING_STATUS_AT),
-            ];
+            $entry = [];
+            if ($status) {
+                $entry['label'] = __('plugins.generic.contributorUserSync.outcome.' . $status);
+                $entry['at'] = (string) $author->getData(ContributorSyncService::SETTING_STATUS_AT);
+            }
+            if ($linkedUserId) {
+                $linkedUser = Repo::user()->get($linkedUserId);
+                $entry['linkedUserId'] = $linkedUserId;
+                $entry['linkedUsername'] = $linkedUser ? $linkedUser->getUsername() : ('#' . $linkedUserId);
+            }
+            $map[(int) $author->getId()] = $entry;
         }
         return new JSONMessage(true, [
             'authors' => $map,
             'expectedCount' => (int) $submission->getCurrentPublication()->getData('contributorUserSyncExpectedCount'),
         ]);
+    }
+
+    /**
+     * Manager/editor action: clear the link between one contributor row and
+     * the user account it is currently linked to (SETTING_USER_ID), plus any
+     * related pending-match state (SETTING_PENDING_USER_ID/SETTING_MATCH_KEY).
+     * This is a targeted undo for an incorrect match — whether from a
+     * false-positive confirm or an old pre-confirmation-gate link — and never
+     * touches the user account itself. The action is logged for auditability.
+     */
+    private function manageUnlink($request): JSONMessage
+    {
+        $context = $request->getContext();
+        $author = Repo::author()->get((int) $request->getUserVar('authorId'));
+        $publication = $author ? Repo::publication()->get((int) $author->getData('publicationId')) : null;
+        $submission = $publication ? Repo::submission()->get((int) $publication->getData('submissionId'), $context->getId()) : null;
+        if (!$submission) {
+            return new JSONMessage(false, __('plugins.generic.contributorUserSync.action.error'));
+        }
+
+        $previousUserId = (int) $author->getData(ContributorSyncService::SETTING_USER_ID);
+        if (!$previousUserId) {
+            return new JSONMessage(false, __('plugins.generic.contributorUserSync.action.notLinked'));
+        }
+        $previousUser = Repo::user()->get($previousUserId);
+
+        self::$suspendHook = true;
+        try {
+            $author->setData(ContributorSyncService::SETTING_USER_ID, null);
+            $author->setData(ContributorSyncService::SETTING_PENDING_USER_ID, null);
+            $author->setData(ContributorSyncService::SETTING_MATCH_KEY, null);
+            $author->setData(ContributorSyncService::SETTING_STATUS, SyncReport::UNLINKED_MANUAL);
+            $author->setData(ContributorSyncService::SETTING_STATUS_AT, date('Y-m-d H:i:s'));
+            Repo::author()->edit($author, []);
+        } finally {
+            self::$suspendHook = false;
+        }
+
+        $this->logUnlink($context->getId(), $request->getUser(), $author, (int) $submission->getId(), $previousUserId, $previousUser);
+
+        return new JSONMessage(true, __('plugins.generic.contributorUserSync.action.unlinked'));
+    }
+
+    /**
+     * Append an audit-trail entry for a manual unlink action: who did it, when,
+     * and which contributor/user were involved. Persisted as a bounded
+     * per-context setting, mirroring the existing lastReportRows pattern —
+     * this plugin has no separate logging table. Also mirrored to error_log
+     * for visibility in the server log, consistent with this class's other
+     * error_log calls.
+     */
+    private function logUnlink(int $contextId, $actor, $author, int $submissionId, int $previousUserId, $previousUser): void
+    {
+        $log = (array) ($this->getSetting($contextId, 'unlinkAuditLog') ?? []);
+        $log[] = [
+            'at' => date('Y-m-d H:i:s'),
+            'submissionId' => $submissionId,
+            'contributorId' => (int) $author->getId(),
+            'contributorName' => $author->getFullName(false) ?: '',
+            'contributorEmail' => (string) $author->getEmail(),
+            'previousUserId' => $previousUserId,
+            'previousUsername' => $previousUser ? $previousUser->getUsername() : null,
+            'actorUserId' => $actor ? (int) $actor->getId() : null,
+            'actorUsername' => $actor ? $actor->getUsername() : null,
+        ];
+        // Bound the log so it can't grow without limit in the settings table.
+        if (count($log) > 500) {
+            $log = array_slice($log, -500);
+        }
+        $this->updateSetting($contextId, 'unlinkAuditLog', $log, 'object');
+        error_log(sprintf(
+            'contributorUserSync unlink: contributor #%d (submission #%d) unlinked from user #%d (%s) by user #%s (%s)',
+            (int) $author->getId(),
+            $submissionId,
+            $previousUserId,
+            $previousUser ? $previousUser->getUsername() : 'unknown',
+            $actor ? (string) $actor->getId() : 'unknown',
+            $actor ? $actor->getUsername() : 'unknown'
+        ));
     }
 
     /**

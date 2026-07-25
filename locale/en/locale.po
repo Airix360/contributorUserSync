@@ -205,6 +205,9 @@ msgstr "Skipped — this user is already matched to another contributor on this 
 msgid "plugins.generic.contributorUserSync.outcome.linkCleared"
 msgstr "Previous user link cleared because the contributor's email changed"
 
+msgid "plugins.generic.contributorUserSync.outcome.unlinkedManual"
+msgstr "Manually unlinked from the user account by an editor or manager"
+
 # --- Contributors-panel actions
 msgid "plugins.generic.contributorUserSync.action.sync"
 msgstr "Sync"
@@ -217,6 +220,21 @@ msgstr "Sync Contributors"
 
 msgid "plugins.generic.contributorUserSync.action.error"
 msgstr "The sync request failed. Check that you have journal-manager access."
+
+msgid "plugins.generic.contributorUserSync.action.unlink"
+msgstr "Unlink"
+
+msgid "plugins.generic.contributorUserSync.action.unlinkConfirm"
+msgstr "This will remove the link between this contributor and the linked user account. The user account itself will not be changed or deleted — only the connection between it and this contributor row is removed. Continue?"
+
+msgid "plugins.generic.contributorUserSync.action.unlinked"
+msgstr "Contributor unlinked from the user account."
+
+msgid "plugins.generic.contributorUserSync.action.notLinked"
+msgstr "This contributor is not linked to a user account."
+
+msgid "plugins.generic.contributorUserSync.action.linkedTo"
+msgstr "Linked to"
 
 # --- Contributor notifications / wizard settings
 msgid "plugins.generic.contributorUserSync.settings.notify"
