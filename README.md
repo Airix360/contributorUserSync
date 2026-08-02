@@ -95,6 +95,13 @@ Scan the whole journal, preview, then apply — with a downloadable CSV.
 ### Submission-wizard contributor-count gate
 ![Contributor count](docs/img/08-count-gate.png)
 
+### Admin unlink action
+A contributor row linked to a user account shows who it's linked to and an **Unlink**
+button — for editors/managers to undo an incorrect match (a false-positive confirm, or an
+old pre-confirmation-gate link) without touching the underlying user account.
+
+![Contributors panel showing a linked account with Sync/Invite/Unlink actions](docs/img/09-unlink-action.png)
+
 ---
 
 ## 📦 Installation
