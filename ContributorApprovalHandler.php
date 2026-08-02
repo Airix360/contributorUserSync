@@ -86,7 +86,7 @@ class ContributorApprovalHandler extends Handler
             $templateMgr->assign('cusMessage', __('plugins.generic.contributorUserSync.approval.confirmed'));
         }
 
-        $templateMgr->assign('pageTitle', __('plugins.generic.contributorUserSync.approval.title'));
+        $templateMgr->assign('pageTitle', 'plugins.generic.contributorUserSync.approval.title');
         $templateMgr->display($this->plugin->getTemplateResource('approval.tpl'));
     }
 
@@ -103,7 +103,7 @@ class ContributorApprovalHandler extends Handler
 
         if (!$valid) {
             $templateMgr->assign('cusMessage', __('plugins.generic.contributorUserSync.approval.invalid'));
-            $templateMgr->assign('pageTitle', __('plugins.generic.contributorUserSync.approval.title'));
+            $templateMgr->assign('pageTitle', 'plugins.generic.contributorUserSync.approval.title');
             $templateMgr->display($this->plugin->getTemplateResource('approval.tpl'));
             return;
         }
@@ -140,7 +140,7 @@ class ContributorApprovalHandler extends Handler
             $templateMgr->assign('cusMessage', __('plugins.generic.contributorUserSync.approval.matchDeclined'));
         }
 
-        $templateMgr->assign('pageTitle', __('plugins.generic.contributorUserSync.approval.title'));
+        $templateMgr->assign('pageTitle', 'plugins.generic.contributorUserSync.approval.title');
         $templateMgr->display($this->plugin->getTemplateResource('approval.tpl'));
     }
 
