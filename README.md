@@ -8,9 +8,9 @@
 [![OJS](https://img.shields.io/badge/OJS-3.4%20%7C%203.5-006798.svg)](https://pkp.sfu.ca/software/ojs/)
 [![PHP](https://img.shields.io/badge/PHP-8.2%2B-777bb4.svg)](https://www.php.net/)
 [![Release](https://img.shields.io/github/v/release/thathman/contributorUserSync?color=green&label=release)](https://github.com/thathman/contributorUserSync/releases)
-[![Sponsor](https://img.shields.io/badge/%E2%9D%A4%20Sponsor-GitHub%20Sponsors-ea4aaa.svg)](https://github.com/sponsors/thathman)
+[![Sponsor](https://img.shields.io/badge/Sponsor-GitHub%20Sponsors-ea4aaa.svg)](https://github.com/sponsors/thathman)
 
-**[Features](#-features) · [Screenshots](#-screenshots) · [Install](#-installation) · [Configure](#%EF%B8%8F-configuration) · [How it works](#-how-it-works) · [Safety](#-safety--privacy) · [Sponsor](#-sponsor)**
+**[Features](#features) · [Screenshots](#screenshots) · [Install](#installation) · [Configure](#configuration) · [How it works](#how-it-works) · [Safety](#safety--privacy) · [Sponsor](#sponsor)**
 
 </div>
 
@@ -39,26 +39,26 @@ journal-wide bulk tool.
 
 ---
 
-## ✨ Features
+## Features
 
-| | Feature | What it does |
-|---|---|---|
-| 🔗 | **Contributor → user matching** | On add/edit, finds the OJS user with the same email and links them (stored as an author setting). |
-| 🆔 | **Verified ORCID auto-sync** | Copies a *verified* ORCID iD (with its OAuth proof) from the matched user into the contributor, so they read as verified and are never re-prompted. |
-| 🎛️ | **Four sync modes** | Do nothing · link existing users only · invite missing contributors · auto-create accounts. |
-| 🧑‍🤝‍🧑 | **Role filtering** | Choose which contributor (author) roles are eligible for syncing. |
-| 🎚️ | **Configurable created-user role** | Auto-created/invited accounts always get Author; a manager can opt in to also grant Reviewer, from a fixed allow-list. Editor/Manager/Admin are never assignable. |
-| 🖱️ | **Per-contributor actions** | **Sync** and **Invite** buttons on every contributor row, plus a panel-level **Sync Contributors**, with persistent status badges. |
-| 📨 | **Real email invitations** | Missing contributors get an OJS invitation with an acceptance link and create their own account (Author role only — no emailed passwords). |
-| 🔔 | **"You were added" notifications** | Optionally email contributors when added to a submission, with a **decline** link that removes them. |
-| 📋 | **ORCID connection requests** | When a matched user has no verified ORCID, optionally email them OJS's ORCID authorization request. |
-| 📊 | **Bulk sync + CSV report** | Scan every prior submission: preview (dry run) then apply, with a downloadable report. |
-| 🔢 | **Submission-wizard count gate** | Optionally require the submitter to declare a contributor count and match it before submitting. |
-| 🛡️ | **Safe by default** | Verified-only ORCID, never overwrites, never auto-creates, Author role only, multi-journal scoped. |
+| Feature | What it does |
+|---|---|
+| **Contributor → user matching** | On add/edit, finds the OJS user with the same email and links them (stored as an author setting). |
+| **Verified ORCID auto-sync** | Copies a *verified* ORCID iD (with its OAuth proof) from the matched user into the contributor, so they read as verified and are never re-prompted. |
+| **Four sync modes** | Do nothing · link existing users only · invite missing contributors · auto-create accounts. |
+| **Role filtering** | Choose which contributor (author) roles are eligible for syncing. |
+| **Configurable created-user role** | Auto-created/invited accounts always get Author; a manager can opt in to also grant Reviewer, from a fixed allow-list. Editor/Manager/Admin are never assignable. |
+| **Per-contributor actions** | **Sync** and **Invite** buttons on every contributor row, plus a panel-level **Sync Contributors**, with persistent status badges. |
+| **Real email invitations** | Missing contributors get an OJS invitation with an acceptance link and create their own account (Author role only — no emailed passwords). |
+| **"You were added" notifications** | Optionally email contributors when added to a submission, with a **decline** link that removes them. |
+| **ORCID connection requests** | When a matched user has no verified ORCID, optionally email them OJS's ORCID authorization request. |
+| **Bulk sync + CSV report** | Scan every prior submission: preview (dry run) then apply, with a downloadable report. |
+| **Submission-wizard count gate** | Optionally require the submitter to declare a contributor count and match it before submitting. |
+| **Safe by default** | Verified-only ORCID, never overwrites, never auto-creates, Author role only, multi-journal scoped. |
 
 ---
 
-## 📸 Screenshots
+## Screenshots
 
 > Captured live on OJS 3.5.
 
@@ -104,7 +104,7 @@ old pre-confirmation-gate link) without touching the underlying user account.
 
 ---
 
-## 📦 Installation
+## Installation
 
 **From the OJS Plugin Gallery** *(once published)*
 > Dashboard → **Settings → Website → Plugins → Plugin Gallery** → search **Contributor User
@@ -125,7 +125,7 @@ publication settings.
 
 ---
 
-## ⚙️ Configuration
+## Configuration
 
 Open the plugin's **Settings**. Sections:
 
@@ -161,7 +161,7 @@ Start with the defaults, run a **Bulk sync preview** to see what *would* change,
 
 ---
 
-## 🔍 How it works
+## How it works
 
 - **Matching** is by **email only** — name- or ORCID-only matching is intentionally avoided to
   prevent false positives.
@@ -181,7 +181,7 @@ Start with the defaults, run a **Bulk sync preview** to see what *would* change,
 
 ---
 
-## 🛡️ Safety & privacy
+## Safety & privacy
 
 - Never overwrites an existing contributor ORCID unless explicitly enabled.
 - Never treats an unverified/manual ORCID as verified.
@@ -198,17 +198,17 @@ Start with the defaults, run a **Bulk sync preview** to see what *would* change,
 
 ---
 
-## 🔄 Compatibility
+## Compatibility
 
 | OJS | Status |
 |---|---|
-| **3.5** | ✅ Built and tested against (namespaced plugin API, `Hook::add`, `Repo::*`, `HasOrcid`, invitation framework). |
-| **3.4** | ☑️ Core matching/ORCID paths share the same model; invitations fall back to disabled placeholder accounts. |
-| **3.3** | ❌ Out of scope — uses the older array-based plugin/hook API and a different ORCID storage shape. |
+| **3.5** | Built and tested against (namespaced plugin API, `Hook::add`, `Repo::*`, `HasOrcid`, invitation framework). |
+| **3.4** | Supported — core matching/ORCID paths share the same model; invitations fall back to disabled placeholder accounts. |
+| **3.3** | Out of scope — uses the older array-based plugin/hook API and a different ORCID storage shape. |
 
 ---
 
-## ❤️ Sponsor
+## Sponsor
 
 Contributor User Sync is free and open source, built and maintained by
 [**Hendrix Nwaokolo / Airix Media**](https://airixmedia.com). If it saves your editorial team
@@ -227,13 +227,13 @@ notification options), and responsive issue support.
 
 ---
 
-## 🤝 Contributing & support
+## Contributing & support
 
 - **Issues / feature requests:** [GitHub Issues](https://github.com/thathman/contributorUserSync/issues)
 - **Pull requests** welcome — please run `php -l` on changed files and keep behaviour behind
   settings with safe defaults.
 
-## ⚖️ License
+## License
 
 GNU General Public License v3.0 — see [LICENSE](LICENSE).
 
