@@ -9,7 +9,7 @@
 {include file="frontend/components/header.tpl" pageTitle=$pageTitle}
 
 <div class="page page_message">
-	<h1>{$pageTitle|escape}</h1>
+	<h1>{translate key=$pageTitle}</h1>
 	<p>{$cusMessage|escape}</p>
 </div>
 

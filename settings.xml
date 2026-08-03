@@ -53,12 +53,6 @@
 		<value>false</value>
 	</setting>
 
-	<!-- New users -->
-	<setting type="string">
-		<name>createUserRole</name>
-		<value>author</value>
-	</setting>
-
 	<!-- Contributor notifications / wizard -->
 	<setting type="bool">
 		<name>notifyAddedContributors</name>
@@ -66,6 +60,12 @@
 	</setting>
 	<setting type="bool">
 		<name>requireContributorCount</name>
+		<value>false</value>
+	</setting>
+
+	<!-- New users: always Author; manager opt-in also grants Reviewer only -->
+	<setting type="bool">
+		<name>createUserAllowReviewer</name>
 		<value>false</value>
 	</setting>
 </plugin_settings>

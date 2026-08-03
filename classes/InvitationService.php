@@ -11,7 +11,9 @@
  * @brief Sends a real OJS role-assignment invitation (OJS 3.5 invitation
  *   framework) to a contributor with no user account. The recipient gets an
  *   email with an acceptance link and creates their own account — no password
- *   is generated or sent. Only the Author role is ever offered.
+ *   is generated or sent. The Author role is always offered; Reviewer is the
+ *   only other role this class will ever offer, and only when the caller
+ *   (gated on a manager opt-in setting) passes a resolved Reviewer group id.
  */
 
 namespace APP\plugins\generic\contributorUserSync\classes;
@@ -36,10 +38,11 @@ class InvitationService
     }
 
     /**
-     * Dispatch an email invitation offering the Author role. Throws on failure
-     * so the caller can record the error.
+     * Dispatch an email invitation offering the Author role (and, if
+     * $reviewerGroupId is given, also the Reviewer role). Throws on failure so
+     * the caller can record the error.
      */
-    public function inviteContributor(Author $author, int $userGroupId): void
+    public function inviteContributor(Author $author, int $userGroupId, ?int $reviewerGroupId = null): void
     {
         $email = trim((string) $author->getEmail());
         $inviter = Application::get()->getRequest()->getUser();
@@ -54,12 +57,21 @@ class InvitationService
         $payload = $invitation->getPayload();
         $payload->givenName = [$locale => $author->getLocalizedGivenName() ?: $email];
         $payload->familyName = [$locale => (string) $author->getLocalizedFamilyName()];
-        $payload->userGroupsToAdd = [[
+        $groupsToAdd = [[
             'userGroupId' => $userGroupId,
             'masthead' => false,
             'dateStart' => date('Y-m-d'),
             'dateEnd' => null,
         ]];
+        if ($reviewerGroupId) {
+            $groupsToAdd[] = [
+                'userGroupId' => $reviewerGroupId,
+                'masthead' => false,
+                'dateStart' => date('Y-m-d'),
+                'dateEnd' => null,
+            ];
+        }
+        $payload->userGroupsToAdd = $groupsToAdd;
         // NOTE: do not set shouldUseInviteData — that flag makes the manager UI
         // read inviteStagePayload (used by core's staged invite wizard), and
         // with it unset there the Users & Roles invitations tab fatals.

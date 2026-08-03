@@ -23,7 +23,6 @@ class SyncReport
     public const ORCID_SYNCED = 'orcidSynced';
     public const ORCID_SKIPPED_EXISTING = 'orcidSkippedExisting';
     public const ORCID_REQUEST_SENT = 'orcidRequestSent';
-    public const ORCID_SKIPPED_UNVERIFIED = 'orcidSkippedUnverified';
     public const USER_CREATED = 'userCreated';
     public const INVITATION_SENT = 'invitationSent';
     public const SKIPPED_NO_EMAIL = 'skippedNoEmail';
@@ -31,6 +30,22 @@ class SyncReport
     public const SKIPPED_NO_VERIFIED_ORCID = 'skippedNoVerifiedOrcid';
     public const SKIPPED_INELIGIBLE_ROLE = 'skippedIneligibleRole';
     public const ERROR = 'error';
+
+    // --- Added for the match-confirmation gate (see ContributorSyncService) --
+    /** A pre-existing (not just-created) user was matched; confirmation was requested/pending. */
+    public const MATCH_PENDING_CONFIRMATION = 'matchPendingConfirmation';
+    /** The matched user previously declined the match; no data was written. */
+    public const SKIPPED_MATCH_DECLINED = 'skippedMatchDeclined';
+    /** Another contributor row on this submission is already linked to this user. */
+    public const SKIPPED_DUPLICATE_MATCH = 'skippedDuplicateMatch';
+    /** A previously-linked user no longer matches the contributor's (changed) email. */
+    public const LINK_CLEARED = 'linkCleared';
+
+    // --- Added for the admin-facing manual "unlink this account" action -----
+    /** An editor/manager explicitly cleared a contributor's user link (see
+     *  ContributorUserSyncPlugin::manageUnlink()). Distinct from LINK_CLEARED,
+     *  which is an automatic reconciliation triggered by an email change. */
+    public const UNLINKED_MANUAL = 'unlinkedManual';
 
     /** @var int Distinct contributors scanned */
     public int $scanned = 0;
